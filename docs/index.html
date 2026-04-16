@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food Recommendation System — Project Guide</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#232733;--border:#2e3345;
+  --text:#e4e6f0;--text2:#9ca3bf;--accent:#6c63ff;--accent2:#ff6b6b;
+  --green:#2ecc71;--yellow:#f1c40f;--orange:#e67e22;--cyan:#00d2d3;
+  --radius:12px;--shadow:0 4px 24px rgba(0,0,0,.35);
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden}
+
+/* ── NAV ── */
+.topnav{position:sticky;top:0;z-index:100;background:rgba(15,17,23,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 2rem}
+.topnav-inner{max-width:1200px;margin:auto;display:flex;align-items:center;gap:1.5rem;height:56px;overflow-x:auto}
+.topnav a{color:var(--text2);text-decoration:none;font-size:.85rem;white-space:nowrap;transition:color .2s}
+.topnav a:hover,.topnav a.active{color:var(--accent)}
+.topnav .logo{font-weight:700;font-size:1rem;color:var(--text);margin-right:auto;display:flex;align-items:center;gap:.5rem}
+.topnav .logo span{font-size:1.2rem}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:5rem 2rem 3rem;background:linear-gradient(170deg,#1a1040 0%,var(--bg) 100%)}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;background:linear-gradient(135deg,#6c63ff,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.75rem}
+.hero p{color:var(--text2);max-width:640px;margin:auto;font-size:1.1rem}
+
+/* ── LAYOUT ── */
+.container{max-width:1100px;margin:auto;padding:0 1.5rem}
+section{padding:4rem 0}
+section h2{font-size:1.8rem;font-weight:700;margin-bottom:.5rem}
+section .subtitle{color:var(--text2);margin-bottom:2rem;font-size:1rem}
+h3{font-size:1.25rem;margin:1.5rem 0 .75rem;color:var(--cyan)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;transition:border-color .25s}
+.card:hover{border-color:var(--accent)}
+.card-title{font-weight:700;font-size:1.05rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem}
+.card-title .badge{font-size:.7rem;padding:2px 8px;border-radius:20px;font-weight:600}
+.badge-green{background:rgba(46,204,113,.15);color:var(--green)}
+.badge-yellow{background:rgba(241,196,15,.15);color:var(--yellow)}
+.badge-orange{background:rgba(230,126,34,.15);color:var(--orange)}
+.badge-red{background:rgba(255,107,107,.15);color:var(--accent2)}
+.badge-cyan{background:rgba(0,210,211,.15);color:var(--cyan)}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;margin:1rem 0;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--surface2);color:var(--cyan);font-weight:600;text-align:left;padding:.65rem 1rem;white-space:nowrap}
+td{padding:.6rem 1rem;border-top:1px solid var(--border);color:var(--text2)}
+tr:hover td{background:rgba(108,99,255,.04)}
+
+/* ── PIPELINE ── */
+.pipeline{display:flex;gap:0;align-items:stretch;flex-wrap:wrap;margin:2rem 0}
+.pipe-step{flex:1;min-width:160px;position:relative;padding:1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);text-align:center;transition:transform .2s,border-color .2s}
+.pipe-step:hover{transform:translateY(-4px);border-color:var(--accent)}
+.pipe-step .num{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;margin-bottom:.5rem}
+.pipe-step h4{font-size:.92rem;margin-bottom:.35rem}
+.pipe-step p{font-size:.78rem;color:var(--text2)}
+.pipe-arrow{display:flex;align-items:center;font-size:1.4rem;color:var(--text2);padding:0 .15rem}
+@media(max-width:768px){.pipe-arrow{display:none}.pipeline{flex-direction:column;gap:.75rem}}
+
+/* ── CODE ── */
+.codeblock{background:#141620;border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;overflow-x:auto;font-family:'Cascadia Code','Fira Code',monospace;font-size:.82rem;line-height:1.65;color:#c9d1d9;margin:1rem 0}
+.codeblock .kw{color:#ff79c6}.codeblock .fn{color:#50fa7b}.codeblock .str{color:#f1fa8c}.codeblock .cm{color:#6272a4}.codeblock .num{color:#bd93f9}
+
+/* ── FLOW DIAGRAM ── */
+.flow{display:grid;grid-template-columns:1fr;gap:0;margin:2rem 0}
+.flow-item{display:flex;gap:1rem;position:relative;padding-bottom:2rem}
+.flow-item:last-child{padding-bottom:0}
+.flow-line{width:3px;background:var(--border);position:absolute;left:17px;top:36px;bottom:0}
+.flow-item:last-child .flow-line{display:none}
+.flow-dot{width:36px;height:36px;min-width:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;z-index:1}
+.flow-body{flex:1}
+.flow-body h4{font-size:1rem;margin-bottom:.25rem}
+.flow-body p{font-size:.88rem;color:var(--text2)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.tab-btn{padding:.45rem 1rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:.85rem;transition:all .2s}
+.tab-btn:hover{border-color:var(--accent);color:var(--text)}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── METRIC ── */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;text-align:center}
+.metric .val{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.metric .label{font-size:.8rem;color:var(--text2);margin-top:.25rem}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:.85rem;border-top:1px solid var(--border)}
+
+/* ── SCROLL ANIM ── */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ── VISUAL DEMO ── */
+.demo-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin:1rem 0}
+.demo-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;margin-bottom:.75rem}
+.step-indicator{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;padding:3px 10px;border-radius:20px;font-weight:600;margin-bottom:.5rem}
+
+/* Matrix grid */
+.matrix-grid{display:inline-grid;gap:2px;margin:.75rem 0;font-size:.78rem;font-family:'Cascadia Code','Fira Code',monospace}
+.matrix-grid .cell{min-width:52px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .3s;cursor:default;font-weight:500}
+.matrix-grid .cell-header{background:transparent;color:var(--cyan);font-weight:700;font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.matrix-grid .cell-row-header{background:transparent;color:var(--accent);font-weight:600;font-size:.7rem;text-align:right;padding-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.matrix-grid .cell-value{background:var(--surface);border:1px solid var(--border)}
+.matrix-grid .cell-value:hover{border-color:var(--accent);transform:scale(1.1);z-index:2}
+.matrix-grid .cell-zero{color:#3a3f52}
+.matrix-grid .cell-hot{background:rgba(255,107,107,.15);color:var(--accent2);border-color:rgba(255,107,107,.3)}
+.matrix-grid .cell-warm{background:rgba(241,196,15,.1);color:var(--yellow);border-color:rgba(241,196,15,.2)}
+.matrix-grid .cell-cool{background:rgba(108,99,255,.1);color:var(--accent);border-color:rgba(108,99,255,.2)}
+.matrix-grid .cell-empty{background:rgba(46,52,74,.3);color:#3a3f52;font-style:italic;font-size:.7rem}
+.matrix-grid .cell-predict{background:rgba(46,204,113,.12);color:var(--green);border:1px dashed var(--green);animation:pulse-border 2s infinite}
+@keyframes pulse-border{0%,100%{border-color:var(--green)}50%{border-color:transparent}}
+
+/* Bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:4px;margin:.5rem 0}
+.bar-row{display:flex;align-items:center;gap:.5rem;font-size:.78rem}
+.bar-row .bar-label{min-width:110px;text-align:right;color:var(--text2);font-family:'Cascadia Code','Fira Code',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .bar-track{flex:1;height:22px;background:var(--surface);border-radius:4px;overflow:hidden;position:relative}
+.bar-row .bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.22,1,.36,1);display:flex;align-items:center;padding-left:6px;font-size:.7rem;font-weight:600;color:#fff;white-space:nowrap}
+.bar-row .bar-val{min-width:48px;color:var(--text2);font-family:'Cascadia Code','Fira Code',monospace;font-size:.75rem}
+
+/* Arrow between matrices */
+.matrix-flow{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center;margin:1.5rem 0}
+.matrix-flow .op{font-size:1.6rem;font-weight:800;color:var(--text2);padding:0 .25rem}
+.matrix-block{text-align:center}
+.matrix-block .block-label{font-size:.78rem;font-weight:700;margin-bottom:.5rem;letter-spacing:.03em}
+
+/* Recipe card mini */
+.recipe-mini{display:flex;gap:.75rem;padding:.75rem;border-radius:8px;background:var(--surface);border:1px solid var(--border);margin-bottom:.5rem;align-items:center;font-size:.85rem}
+.recipe-mini .r-icon{font-size:1.4rem;min-width:32px;text-align:center}
+.recipe-mini .r-name{font-weight:600;color:var(--text)}
+.recipe-mini .r-ingr{color:var(--text2);font-size:.78rem;margin-top:2px}
+
+/* Cosine visual */
+.cosine-visual{position:relative;width:280px;height:280px;margin:1rem auto}
+.cosine-visual canvas{width:100%;height:100%}
+
+/* Highlight token */
+.tok{display:inline-block;padding:1px 6px;border-radius:4px;margin:1px;font-size:.78rem;font-family:'Cascadia Code','Fira Code',monospace}
+.tok-ingr{background:rgba(108,99,255,.15);color:var(--accent)}
+.tok-tag{background:rgba(0,210,211,.15);color:var(--cyan)}
+.tok-desc{background:rgba(241,196,15,.15);color:var(--yellow)}
+
+/* Animated number */
+.anim-num{display:inline-block;transition:all .4s}
+
+/* Interactive controls */
+.demo-controls{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}
+.demo-btn{padding:.4rem .9rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:.82rem;transition:all .2s}
+.demo-btn:hover{border-color:var(--accent);color:var(--text)}
+.demo-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Bracket decoration */
+.bracket-left,.bracket-right{font-size:3rem;font-weight:200;color:var(--text2);line-height:1;display:flex;align-items:center}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+<div class="topnav-inner">
+  <div class="logo"><span>🍽️</span> FoodRecSys</div>
+  <a href="#overview">Tổng quan</a>
+  <a href="#dataset">Dataset</a>
+  <a href="#pipeline">Pipeline</a>
+  <a href="#step1">EDA</a>
+  <a href="#step2">Cleaning</a>
+  <a href="#step3">Features</a>
+  <a href="#step4">Models</a>
+  <a href="#visual">Vector & Ma trận</a>
+  <a href="#glossary">Thuật ngữ</a>
+</div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <h1>Food Recommendation System</h1>
+  <p>Hướng dẫn toàn diện về cách xây dựng hệ thống gợi ý món ăn — từ dữ liệu thô đến mô hình Hybrid.</p>
+</header>
+
+<!-- ═══════════════════ SECTION: OVERVIEW ═══════════════════ -->
+<section id="overview">
+<div class="container reveal">
+  <h2>1. Tổng quan dự án</h2>
+  <p class="subtitle">Mục tiêu: Gợi ý món ăn phù hợp sở thích mỗi người dùng dựa trên lịch sử đánh giá, nguyên liệu, tags, và nội dung công thức.</p>
+
+  <div class="metrics">
+    <div class="metric"><div class="val">231,637</div><div class="label">Recipes gốc</div></div>
+    <div class="metric"><div class="val">1,132,367</div><div class="label">Interactions gốc</div></div>
+    <div class="metric"><div class="val">77,300</div><div class="label">Recipes sau cleaning</div></div>
+    <div class="metric"><div class="val">706,514</div><div class="label">Interactions sau cleaning</div></div>
+    <div class="metric"><div class="val">30,836</div><div class="label">Users duy nhất</div></div>
+  </div>
+
+  <!-- Big picture pipeline -->
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="num" style="background:rgba(108,99,255,.2);color:var(--accent)">1</div>
+      <h4>Thu thập</h4><p>Tải dataset Food.com từ Kaggle</p>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num" style="background:rgba(46,204,113,.2);color:var(--green)">2</div>
+      <h4>EDA</h4><p>Khám phá & trực quan hóa</p>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num" style="background:rgba(241,196,15,.2);color:var(--yellow)">3</div>
+      <h4>Cleaning</h4><p>Làm sạch & lọc sparse</p>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num" style="background:rgba(230,126,34,.2);color:var(--orange)">4</div>
+      <h4>Features</h4><p>TF-IDF, user/item features</p>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="num" style="background:rgba(255,107,107,.2);color:var(--accent2)">5</div>
+      <h4>Model</h4><p>CB + CF + Hybrid</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: DATASET ═══════════════════ -->
+<section id="dataset" style="background:var(--surface)">
+<div class="container reveal">
+  <h2>2. Dataset & Biến số</h2>
+  <p class="subtitle">Nguồn: <strong>Food.com Recipes and User Interactions</strong> (Kaggle) — dữ liệu thu thập từ năm 2000 đến 2018.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-recipes">📋 Recipes</button>
+    <button class="tab-btn" data-tab="tab-interactions">⭐ Interactions</button>
+    <button class="tab-btn" data-tab="tab-nutrition">🥗 Nutrition (parsed)</button>
+    <button class="tab-btn" data-tab="tab-derived">🔧 Derived columns</button>
+  </div>
+
+  <!-- TAB: Recipes -->
+  <div id="tab-recipes" class="tab-panel active">
+    <p style="margin-bottom:1rem;color:var(--text2)">File gốc: <code>RAW_recipes.csv</code> — 231,637 dòng × 12 cột.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>Cột</th><th>Kiểu</th><th>Ý nghĩa</th><th>Ví dụ</th></tr>
+      <tr><td><code>name</code></td><td>str</td><td>Tên món ăn</td><td>"arriba baked winter squash mexican style"</td></tr>
+      <tr><td><code>id</code></td><td>int64</td><td>ID duy nhất của recipe (khóa chính)</td><td>137739</td></tr>
+      <tr><td><code>minutes</code></td><td>int64</td><td>Thời gian nấu (phút)</td><td>55</td></tr>
+      <tr><td><code>contributor_id</code></td><td>int64</td><td>ID người đăng công thức</td><td>47892</td></tr>
+      <tr><td><code>submitted</code></td><td>str (date)</td><td>Ngày đăng công thức</td><td>"2005-09-16"</td></tr>
+      <tr><td><code>tags</code></td><td>str (list)</td><td>Danh sách thẻ phân loại</td><td>['60-minutes-or-less', 'course', ...]</td></tr>
+      <tr><td><code>nutrition</code></td><td>str (list)</td><td>7 giá trị dinh dưỡng (xem tab Nutrition)</td><td>[51.5, 0.0, 13.0, 0.0, 2.0, 0.0, 4.0]</td></tr>
+      <tr><td><code>n_steps</code></td><td>int64</td><td>Số bước thực hiện</td><td>11</td></tr>
+      <tr><td><code>steps</code></td><td>str (list)</td><td>Chi tiết từng bước nấu</td><td>['preheat oven to 350', ...]</td></tr>
+      <tr><td><code>description</code></td><td>str</td><td>Mô tả ngắn về món (~2% null)</td><td>"autumn is my favorite time..."</td></tr>
+      <tr><td><code>ingredients</code></td><td>str (list)</td><td>Danh sách nguyên liệu</td><td>['winter squash', 'honey', ...]</td></tr>
+      <tr><td><code>n_ingredients</code></td><td>int64</td><td>Số nguyên liệu</td><td>7</td></tr>
+    </table></div>
+  </div>
+
+  <!-- TAB: Interactions -->
+  <div id="tab-interactions" class="tab-panel">
+    <p style="margin-bottom:1rem;color:var(--text2)">File gốc: <code>RAW_interactions.csv</code> — 1,132,367 dòng × 5 cột.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>Cột</th><th>Kiểu</th><th>Ý nghĩa</th><th>Ví dụ</th></tr>
+      <tr><td><code>user_id</code></td><td>int64</td><td>ID người dùng</td><td>38094</td></tr>
+      <tr><td><code>recipe_id</code></td><td>int64</td><td>ID món ăn (foreign key → recipes.id)</td><td>40893</td></tr>
+      <tr><td><code>date</code></td><td>str (date)</td><td>Ngày đánh giá / tương tác</td><td>"2003-02-17"</td></tr>
+      <tr><td><code>rating</code></td><td>int64</td><td>Điểm đánh giá (0-5, nhưng 0 = chưa rate)</td><td>4</td></tr>
+      <tr><td><code>review</code></td><td>str</td><td>Bình luận text của người dùng</td><td>"Great with a salad..."</td></tr>
+    </table></div>
+    <div class="card" style="margin-top:1rem;border-left:3px solid var(--yellow)">
+      <div class="card-title">⚠️ Lưu ý về Rating</div>
+      <p style="color:var(--text2)"><code>rating = 0</code> nghĩa là user để lại review nhưng <strong>không chấm điểm</strong>, không phải đánh giá 0 sao. Trong bước cleaning, chúng ta loại bỏ rating=0 và chỉ giữ 1-5.</p>
+    </div>
+  </div>
+
+  <!-- TAB: Nutrition -->
+  <div id="tab-nutrition" class="tab-panel">
+    <p style="margin-bottom:1rem;color:var(--text2)">Cột <code>nutrition</code> lưu dạng chuỗi list 7 phần tử, được parse thành 7 cột riêng biệt:</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>Index</th><th>Tên cột</th><th>Đơn vị</th><th>Mean</th><th>Median</th><th>Max (gốc)</th></tr>
+      <tr><td>0</td><td><code>calories</code></td><td>kcal</td><td>473.9</td><td>313.4</td><td>434,360</td></tr>
+      <tr><td>1</td><td><code>fat</code></td><td>% daily value</td><td>36.1</td><td>20.0</td><td>17,183</td></tr>
+      <tr><td>2</td><td><code>sugar</code></td><td>% daily value</td><td>84.3</td><td>25.0</td><td>362,729</td></tr>
+      <tr><td>3</td><td><code>sodium</code></td><td>% daily value</td><td>30.2</td><td>14.0</td><td>29,338</td></tr>
+      <tr><td>4</td><td><code>protein</code></td><td>% daily value</td><td>34.7</td><td>18.0</td><td>6,552</td></tr>
+      <tr><td>5</td><td><code>saturated_fat</code></td><td>% daily value</td><td>45.6</td><td>23.0</td><td>10,395</td></tr>
+      <tr><td>6</td><td><code>carbs</code></td><td>% daily value</td><td>15.6</td><td>9.0</td><td>36,098</td></tr>
+    </table></div>
+    <div class="card" style="border-left:3px solid var(--accent2)">
+      <div class="card-title">🔴 Outlier cực lớn</div>
+      <p style="color:var(--text2)">Giá trị Max cho thấy có nhiều outlier phi lý (ví dụ 434K calories). Trong bước cleaning, recipes có calories ngoài khoảng [10, 5000] sẽ được <strong>flag</strong> (<code>is_calorie_outlier = True</code>).</p>
+    </div>
+  </div>
+
+  <!-- TAB: Derived -->
+  <div id="tab-derived" class="tab-panel">
+    <p style="margin-bottom:1rem;color:var(--text2)">Các cột được tạo ra trong quá trình cleaning & feature engineering:</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>Cột</th><th>Tạo ở bước</th><th>Ý nghĩa</th></tr>
+      <tr><td><code>ingredients_clean</code></td><td>Cleaning</td><td>List nguyên liệu đã lowercase + trim</td></tr>
+      <tr><td><code>tags_clean</code></td><td>Cleaning</td><td>List tags đã lowercase + trim</td></tr>
+      <tr><td><code>n_ingredients_calc</code></td><td>Cleaning</td><td>Số nguyên liệu (tính lại từ list)</td></tr>
+      <tr><td><code>ingredients_text</code></td><td>Feature Eng.</td><td>Nguyên liệu nối thành text ("sugar_butter_eggs")</td></tr>
+      <tr><td><code>tags_text</code></td><td>Feature Eng.</td><td>Tags nối thành text</td></tr>
+      <tr><td><code>description_clean</code></td><td>Feature Eng.</td><td>Description sau normalize (lowercase, bỏ punctuation)</td></tr>
+      <tr><td><code>combined_text</code></td><td>Feature Eng.</td><td>ingredients×2 + tags×2 + description×1 (cho TF-IDF)</td></tr>
+      <tr><td><code>is_calorie_outlier</code></td><td>Feature Eng.</td><td>Flag: True nếu calories ngoài [10, 5000]</td></tr>
+    </table></div>
+  </div>
+
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: PIPELINE DETAIL ═══════════════════ -->
+<section id="pipeline">
+<div class="container reveal">
+  <h2>3. Workflow Pipeline chi tiết</h2>
+  <p class="subtitle">Từ dữ liệu thô đến hệ thống gợi ý — mỗi bước giải quyết vấn đề gì và tại sao.</p>
+
+  <div class="flow">
+    <div class="flow-item">
+      <div class="flow-dot" style="background:rgba(108,99,255,.2);color:var(--accent)">1</div>
+      <div class="flow-line"></div>
+      <div class="flow-body">
+        <h4>setup.ipynb — Thu thập dữ liệu</h4>
+        <p>Dùng <code>kagglehub</code> tải dataset "food-com-recipes-and-user-interactions" về <code>data/raw/</code>. Gồm 9 file CSV + PKL.</p>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-dot" style="background:rgba(46,204,113,.2);color:var(--green)">2</div>
+      <div class="flow-line"></div>
+      <div class="flow-body">
+        <h4>01_data_exploration.ipynb — EDA</h4>
+        <p>Hiểu cấu trúc dữ liệu: kiểm tra null, duplicates, phân phối calories/minutes/ingredients, top nguyên liệu, top tags. Parse <code>nutrition</code> thành 7 cột số.</p>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-dot" style="background:rgba(241,196,15,.2);color:var(--yellow)">3</div>
+      <div class="flow-line"></div>
+      <div class="flow-body">
+        <h4>02_data_cleaning.ipynb — Làm sạch</h4>
+        <p>Fill null, remove duplicates, chuẩn hóa text, ép kiểu, lọc rating hợp lệ (1-5), <strong>iterative sparse filter</strong> (loại user/recipe có &lt;3 interactions), giới hạn minutes [1, 1440]. Xuất <code>data/processed/</code>.</p>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-dot" style="background:rgba(230,126,34,.2);color:var(--orange)">4</div>
+      <div class="flow-line"></div>
+      <div class="flow-body">
+        <h4>03_feature_engineering.ipynb — Tạo đặc trưng</h4>
+        <p>Schema guards, anti-leakage time-split (80/20), xây text features, fit TF-IDF vectorizer. <em>(Đang phát triển: top-k similarity, user features, popularity features.)</em></p>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-dot" style="background:rgba(255,107,107,.2);color:var(--accent2)">5</div>
+      <div class="flow-body">
+        <h4>04_recommendation_model.ipynb — Mô hình</h4>
+        <p>Popularity → Content-Based → Collaborative Filtering → Hybrid. <em>(Chưa implement.)</em></p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: STEP 1 — EDA ═══════════════════ -->
+<section id="step1" style="background:var(--surface)">
+<div class="container reveal">
+  <h2>4. Bước 1: Khám phá dữ liệu (EDA)</h2>
+  <p class="subtitle">Notebook: <code>01_data_exploration.ipynb</code></p>
+
+  <div class="card">
+    <div class="card-title">📊 Những phát hiện chính</div>
+    <ul style="color:var(--text2);padding-left:1.5rem;display:flex;flex-direction:column;gap:.5rem">
+      <li><strong>Null</strong>: Chỉ cột <code>description</code> có ~4,979 giá trị null (2.1%). Các cột khác đầy đủ.</li>
+      <li><strong>Duplicates</strong>: 0 dòng trùng lặp trong recipes.</li>
+      <li><strong>Calories</strong>: Phần lớn recipes có 200-400 kcal → món ăn gia đình thông thường. Nhưng có outlier lên đến 434K.</li>
+      <li><strong>Ingredients</strong>: Trung bình 6-10 nguyên liệu/món. Top: salt, butter, sugar, eggs, flour.</li>
+      <li><strong>Minutes</strong>: Trung vị ~30 phút, phổ biến nhất 20-30 phút.</li>
+      <li><strong>Rating</strong>: Trung bình 4.41/5 → dữ liệu rất lệch dương (positive skew).</li>
+      <li><strong>Rating = 0</strong>: Đây là "chưa chấm điểm" chứ không phải 0 sao.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧪 Kỹ thuật parse Nutrition</div>
+    <div class="codeblock">
+<span class="cm"># Cột nutrition lưu dạng chuỗi: "[51.5, 0.0, 13.0, ...]"</span>
+<span class="cm"># Parse thành 7 cột riêng:</span>
+nutrition_cols = [<span class="str">"calories"</span>, <span class="str">"fat"</span>, <span class="str">"sugar"</span>, <span class="str">"sodium"</span>,
+                  <span class="str">"protein"</span>, <span class="str">"saturated_fat"</span>, <span class="str">"carbs"</span>]
+
+df_recipes[nutrition_cols] = pd.DataFrame(
+    df_recipes[<span class="str">'nutrition'</span>].apply(ast.literal_eval).tolist(),
+    index=df_recipes.index
+)
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: STEP 2 — CLEANING ═══════════════════ -->
+<section id="step2">
+<div class="container reveal">
+  <h2>5. Bước 2: Làm sạch dữ liệu</h2>
+  <p class="subtitle">Notebook: <code>02_data_cleaning.ipynb</code> — Giảm từ 231K → 77K recipes, 1.13M → 706K interactions.</p>
+
+  <h3>A. Xử lý Missing Values</h3>
+  <div class="card">
+    <p style="color:var(--text2)"><code>description</code> null → điền <code>"No description available"</code>. Không xóa dòng vì description không phải feature quan trọng nhất.</p>
+  </div>
+
+  <h3>B. Chuẩn hóa Text & Parse List</h3>
+  <div class="card">
+    <div class="codeblock">
+<span class="cm"># Các cột ingredients, tags, steps lưu dạng chuỗi Python list</span>
+<span class="cm"># "['sugar', 'butter']" → ['sugar', 'butter']</span>
+<span class="kw">def</span> <span class="fn">parse_list_safe</span>(x):
+    <span class="kw">if</span> isinstance(x, str):
+        <span class="kw">return</span> ast.literal_eval(x)
+    <span class="kw">return</span> x
+
+<span class="cm"># Tên món: lowercase + trim + gộp spaces</span>
+recipes[<span class="str">'name'</span>] = recipes[<span class="str">'name'</span>].str.lower().str.strip()
+    </div>
+  </div>
+
+  <h3>C. Lọc Interactions</h3>
+  <div class="card">
+    <div class="card-title">Các bước lọc tuần tự:</div>
+    <ol style="color:var(--text2);padding-left:1.5rem;display:flex;flex-direction:column;gap:.5rem">
+      <li><strong>Ép kiểu</strong>: <code>user_id</code>, <code>recipe_id</code> → int, <code>rating</code> → numeric, <code>date</code> → datetime</li>
+      <li><strong>Drop null</strong>: Loại dòng thiếu user_id, recipe_id, hoặc rating</li>
+      <li><strong>Rating range</strong>: Chỉ giữ rating ∈ [1, 5] (loại rating=0)</li>
+      <li><strong>Dedup</strong>: Xóa trùng theo (user_id, recipe_id, date, rating), giữ bản cuối</li>
+      <li><strong>Sync</strong>: Chỉ giữ interactions có recipe_id tồn tại trong recipes</li>
+    </ol>
+  </div>
+
+  <h3>D. Iterative Sparse Filter (quan trọng!)</h3>
+  <div class="card" style="border-left:3px solid var(--accent)">
+    <div class="card-title">🔁 Tại sao cần lọc lặp?</div>
+    <p style="color:var(--text2);margin-bottom:1rem">Trong recommendation system, user/recipe có quá ít interactions sẽ không đủ tín hiệu để học. Nhưng khi loại user ít, một số recipe cũng mất interactions → rơi xuống dưới ngưỡng → cần lặp lại cho đến khi ổn định.</p>
+    <div class="codeblock">
+<span class="kw">def</span> <span class="fn">iterative_sparse_filter</span>(df, min_u=<span class="num">3</span>, min_i=<span class="num">3</span>):
+    <span class="kw">while</span> True:
+        n_before = len(df)
+        <span class="cm"># Loại user có < 3 interactions</span>
+        u = df[<span class="str">'user_id'</span>].value_counts()
+        df = df[df[<span class="str">'user_id'</span>].isin(u[u >= min_u].index)]
+        <span class="cm"># Loại recipe có < 3 interactions</span>
+        i = df[<span class="str">'recipe_id'</span>].value_counts()
+        df = df[df[<span class="str">'recipe_id'</span>].isin(i[i >= min_i].index)]
+        <span class="kw">if</span> len(df) == n_before:
+            <span class="kw">break</span>  <span class="cm"># Đã hội tụ</span>
+    <span class="kw">return</span> df
+    </div>
+  </div>
+
+  <h3>E. Kết quả Cleaning</h3>
+  <div class="metrics">
+    <div class="metric"><div class="val">231K → 77K</div><div class="label">Recipes</div></div>
+    <div class="metric"><div class="val">1.13M → 706K</div><div class="label">Interactions</div></div>
+    <div class="metric"><div class="val">30,836</div><div class="label">Users còn lại</div></div>
+    <div class="metric"><div class="val">78,171</div><div class="label">Recipes còn lại</div></div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: STEP 3 — FEATURES ═══════════════════ -->
+<section id="step3" style="background:var(--surface)">
+<div class="container reveal">
+  <h2>6. Bước 3: Feature Engineering</h2>
+  <p class="subtitle">Notebook: <code>03_data_feature_engineering.ipynb</code> — Biến dữ liệu thô thành vector số để model học.</p>
+
+  <h3>A. Anti-Leakage Split (chống rò rỉ dữ liệu)</h3>
+  <div class="card" style="border-left:3px solid var(--yellow)">
+    <div class="card-title">⚠️ Tại sao phải split TRƯỚC khi tạo feature?</div>
+    <p style="color:var(--text2)">Nếu dùng toàn bộ interactions để tính user features (ví dụ: rating trung bình), thông tin từ tương lai (validation set) sẽ rò rỉ vào features → model đánh giá quá lạc quan. <strong>Giải pháp</strong>: Split theo thời gian, chỉ dùng train để tính statistics.</p>
+    <div class="metrics" style="margin-top:1rem">
+      <div class="metric"><div class="val">559,500</div><div class="label">Train (80%) — trước 2010-08-14</div></div>
+      <div class="metric"><div class="val">139,876</div><div class="label">Val (20%) — sau 2010-08-14</div></div>
+      <div class="metric"><div class="val">3,815</div><div class="label">Cold-start users (chỉ có trong val)</div></div>
+      <div class="metric"><div class="val">4,440</div><div class="label">Cold-start items (chỉ có trong val)</div></div>
+    </div>
+  </div>
+
+  <h3>B. Text Feature Construction</h3>
+  <div class="card">
+    <div class="card-title">Quy trình tạo text features</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.75rem">
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px">
+        <strong style="color:var(--cyan)">Input</strong>
+        <ul style="color:var(--text2);padding-left:1rem;margin-top:.5rem;font-size:.88rem">
+          <li><code>ingredients_clean</code>: ['sugar', 'butter']</li>
+          <li><code>tags_clean</code>: ['60-minutes-or-less', 'dessert']</li>
+          <li><code>description</code>: "A quick easy cake..."</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px">
+        <strong style="color:var(--green)">Output</strong>
+        <ul style="color:var(--text2);padding-left:1rem;margin-top:.5rem;font-size:.88rem">
+          <li><code>ingredients_text</code>: "sugar butter"</li>
+          <li><code>tags_text</code>: "60 minutes or less dessert"</li>
+          <li><code>description_clean</code>: "a quick easy cake"</li>
+          <li><code>combined_text</code>: (xem bên dưới)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="codeblock" style="margin-top:1rem">
+<span class="cm"># combined_text = ingredients×2 + tags×2 + description×1</span>
+<span class="cm"># Lặp lại ingredients và tags 2 lần → tăng trọng số cho chúng trong TF-IDF</span>
+combined = <span class="str">" "</span>.join([
+    ingredients_text,   <span class="cm"># lần 1</span>
+    ingredients_text,   <span class="cm"># lần 2 (weight ×2)</span>
+    tags_text,          <span class="cm"># lần 1</span>
+    tags_text,          <span class="cm"># lần 2 (weight ×2)</span>
+    description_clean   <span class="cm"># lần 1 (weight ×1)</span>
+])
+    </div>
+  </div>
+
+  <h3>C. TF-IDF Vectorization</h3>
+  <div class="card" style="border-left:3px solid var(--accent)">
+    <div class="card-title">🧠 TF-IDF là gì?</div>
+    <p style="color:var(--text2);margin-bottom:1rem"><strong>TF-IDF</strong> (Term Frequency–Inverse Document Frequency) biến text thành vector số. Từ nào xuất hiện nhiều trong 1 document nhưng ít trong toàn bộ corpus → có trọng số cao hơn (quan trọng hơn).</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px">
+        <strong style="font-size:.9rem">TF (Term Frequency)</strong>
+        <p style="color:var(--text2);font-size:.85rem;margin-top:.3rem">Từ xuất hiện bao nhiêu lần trong document đó? "sugar" xuất hiện 3 lần → TF cao.</p>
+      </div>
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px">
+        <strong style="font-size:.9rem">IDF (Inverse Doc Frequency)</strong>
+        <p style="color:var(--text2);font-size:.85rem;margin-top:.3rem">Từ xuất hiện trong bao nhiêu documents? "salt" xuất hiện ở 80% recipes → IDF thấp (ít phân biệt).</p>
+      </div>
+    </div>
+
+    <div class="codeblock" style="margin-top:1rem">
+tfidf_vectorizer = TfidfVectorizer(
+    max_features=<span class="num">20000</span>,    <span class="cm"># Giữ tối đa 20K từ/cụm từ</span>
+    ngram_range=(<span class="num">1</span>, <span class="num">2</span>),   <span class="cm"># Unigram + Bigram ("sugar", "brown_sugar")</span>
+    min_df=<span class="num">5</span>,              <span class="cm"># Từ phải xuất hiện ≥5 documents</span>
+    max_df=<span class="num">0.95</span>,           <span class="cm"># Bỏ từ xuất hiện >95% documents ("and", "the")</span>
+    sublinear_tf=True      <span class="cm"># Dùng 1 + log(TF) thay vì TF thô</span>
+)
+
+<span class="cm"># Output: ma trận sparse (77300 × 20000)</span>
+recipe_tfidf_matrix = tfidf_vectorizer.fit_transform(df_recipes[<span class="str">"combined_text"</span>])
+    </div>
+  </div>
+
+  <h3>D. Các features chưa implement (kế hoạch)</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-orange">Pending</span> Top-K Cosine Similarity</div>
+      <p style="color:var(--text2);font-size:.9rem">Tính cosine similarity giữa các recipe TF-IDF vectors. Lưu top-K (vd: 50) neighbors gần nhất cho mỗi recipe → dùng cho Content-Based recommendation.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-orange">Pending</span> User Features</div>
+      <p style="color:var(--text2);font-size:.9rem"><code>avg_rating_given</code>, <code>rating_count</code>, <code>activity_level</code>, <code>favorite_tags</code> (tính từ train only). Fallback mặc định cho cold-start users.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-orange">Pending</span> Popularity Features</div>
+      <p style="color:var(--text2);font-size:.9rem"><code>rating_count</code>, <code>rating_mean</code>, <code>popularity_score</code> (Bayesian smoothing), <code>is_cold_item</code> flag.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-orange">Pending</span> Constraint Features</div>
+      <p style="color:var(--text2);font-size:.9rem"><code>quick_meal</code> (≤30 min), <code>low_calorie</code> (≤300 kcal), rule-based buckets cho minutes/calories/n_ingredients.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: STEP 4 — MODELS ═══════════════════ -->
+<section id="step4">
+<div class="container reveal">
+  <h2>7. Bước 4: Mô hình Recommendation (Kế hoạch)</h2>
+  <p class="subtitle">Notebook: <code>04_recommendation_model.ipynb</code> — 5 phương pháp từ đơn giản đến phức tạp.</p>
+
+  <!-- Model 1 -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-green">Baseline</span> Popularity-Based</div>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;margin-top:.75rem">
+      <div>
+        <strong style="color:var(--cyan);font-size:.9rem">Ý tưởng</strong>
+        <p style="color:var(--text2);font-size:.88rem">Gợi ý những món phổ biến nhất (rating cao + nhiều lượt đánh giá). Dùng cho cold-start users (user mới, chưa có lịch sử).</p>
+      </div>
+      <div>
+        <strong style="color:var(--cyan);font-size:.9rem">Công thức</strong>
+        <div class="codeblock" style="margin-top:.4rem">
+<span class="cm"># Bayesian average để tránh bias từ recipe ít ratings</span>
+C = global_mean_rating  <span class="cm"># ~4.41</span>
+m = min_ratings_threshold  <span class="cm"># ví dụ 10</span>
+popularity_score = (v/(v+m)) * R + (m/(v+m)) * C
+<span class="cm"># v = số ratings, R = mean rating của recipe</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model 2 -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-cyan">Content</span> Content-Based Filtering</div>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;margin-top:.75rem">
+      <div>
+        <strong style="color:var(--cyan);font-size:.9rem">Ý tưởng</strong>
+        <p style="color:var(--text2);font-size:.88rem">User thích recipe A → tìm recipes có nội dung tương tự A (dựa trên nguyên liệu, tags, mô tả).</p>
+      </div>
+      <div>
+        <strong style="color:var(--cyan);font-size:.9rem">Cách hoạt động</strong>
+        <div class="codeblock" style="margin-top:.4rem">
+<span class="cm"># 1. Mỗi recipe = 1 TF-IDF vector (20K chiều)</span>
+<span class="cm"># 2. Cosine similarity giữa 2 recipes:</span>
+similarity(A, B) = (A · B) / (||A|| × ||B||)
+<span class="cm"># Giá trị ∈ [0, 1]: 1 = giống hoàn toàn, 0 = khác hoàn toàn</span>
+
+<span class="cm"># 3. Với mỗi recipe user thích → lấy top-K neighbors</span>
+<span class="cm"># 4. Gộp + rank → đề xuất</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model 3 -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-yellow">CF</span> Collaborative Filtering</div>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;margin-top:.75rem">
+      <div>
+        <strong style="color:var(--cyan);font-size:.9rem">Ý tưởng</strong>
+        <p style="color:var(--text2);font-size:.88rem">Users có sở thích giống nhau → gợi ý món mà user tương tự đã thích. Không cần biết nội dung món.</p>
+      </div>
+      <div>
+        <strong style="color:var(--cyan);font-size:.9rem">Matrix Factorization</strong>
+        <div class="codeblock" style="margin-top:.4rem">
+<span class="cm"># Ma trận Rating R (users × recipes) rất sparse (~99.97% empty)</span>
+<span class="cm"># Phân tích thành 2 ma trận nhỏ:</span>
+R ≈ U × V<sup>T</sup>
+<span class="cm"># U: user matrix  (30K × k)  — k latent factors</span>
+<span class="cm"># V: recipe matrix (77K × k)  — k latent factors</span>
+<span class="cm"># k thường = 50-200</span>
+
+<span class="cm"># Dự đoán rating: r̂(user, recipe) = U[user] · V[recipe]</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px">
+        <strong style="font-size:.88rem;color:var(--green)">User-Based CF</strong>
+        <p style="color:var(--text2);font-size:.82rem;margin-top:.3rem">Tìm users tương tự → gợi ý món họ thích. Ưu: dễ hiểu. Nhược: chậm khi nhiều users.</p>
+      </div>
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px">
+        <strong style="font-size:.88rem;color:var(--green)">Item-Based CF</strong>
+        <p style="color:var(--text2);font-size:.82rem;margin-top:.3rem">Tìm items tương tự (theo pattern đánh giá). Ưu: ổn định hơn, cache được. Nhược: cold-start items.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model 4 -->
+  <div class="card" style="border:1px solid var(--accent)">
+    <div class="card-title"><span class="badge badge-red">Core</span> Hybrid Recommendation</div>
+    <div style="margin-top:.75rem">
+      <strong style="color:var(--cyan);font-size:.9rem">Kết hợp Content-Based + Collaborative Filtering</strong>
+      <p style="color:var(--text2);margin-top:.5rem">Mỗi phương pháp có điểm yếu riêng. Hybrid giải quyết bằng cách kết hợp:</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1rem">
+        <div style="background:var(--surface2);padding:1rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">🆕</div>
+          <strong style="font-size:.85rem">New User</strong>
+          <p style="color:var(--text2);font-size:.8rem;margin-top:.3rem">Chưa có lịch sử → dùng <strong>Popularity</strong></p>
+        </div>
+        <div style="background:var(--surface2);padding:1rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">📝</div>
+          <strong style="font-size:.85rem">Ít lịch sử</strong>
+          <p style="color:var(--text2);font-size:.8rem;margin-top:.3rem">Ít ratings → ưu tiên <strong>Content-Based</strong></p>
+        </div>
+        <div style="background:var(--surface2);padding:1rem;border-radius:8px;text-align:center">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">🎯</div>
+          <strong style="font-size:.85rem">Nhiều lịch sử</strong>
+          <p style="color:var(--text2);font-size:.8rem;margin-top:.3rem">Đủ data → dùng <strong>CF + Content</strong></p>
+        </div>
+      </div>
+      <div class="codeblock" style="margin-top:1rem">
+<span class="cm"># Weighted hybrid:</span>
+final_score = α × content_score + β × cf_score + γ × popularity_score
+
+<span class="cm"># α, β, γ thay đổi tùy context:</span>
+<span class="cm"># Cold-start user:  α=0, β=0, γ=1 (chỉ popularity)</span>
+<span class="cm"># Warm user:        α=0.4, β=0.5, γ=0.1</span>
+<span class="cm"># + Constraint filter: minutes ≤ X, calories ≤ Y</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model 5 -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-green">Filter</span> Constraint-Based Logic</div>
+    <p style="color:var(--text2)">Lọc kết quả cuối cùng theo ràng buộc người dùng: thời gian nấu tối đa, giới hạn calories, loại trừ nguyên liệu dị ứng, chỉ lấy tag cụ thể (vegetarian, dessert, ...). Đây là <strong>post-filter</strong> áp dụng sau khi model cho ra danh sách gợi ý.</p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: VISUAL DEEP DIVE ═══════════════════ -->
+<section id="visual">
+<div class="container reveal">
+  <h2>Minh họa trực quan: Vector & Ma trận</h2>
+  <p class="subtitle">Dùng ví dụ thực từ dự án Food.com để bạn hiểu rõ cách máy tính "đọc" và so sánh các món ăn.</p>
+
+  <!-- ────────── DEMO 1: TEXT → VECTOR ────────── -->
+  <h3>A. Từ món ăn → Vector số (TF-IDF)</h3>
+
+  <div class="card">
+    <div class="card-title">Vấn đề: Máy tính không hiểu text, chỉ hiểu số</div>
+    <p style="color:var(--text2);margin-bottom:1rem">3 món ăn thực tế trong dataset — chúng ta cần biến mỗi món thành 1 dãy số (vector) để máy so sánh được.</p>
+
+    <div class="recipe-mini">
+      <div class="r-icon">🎃</div>
+      <div><div class="r-name">Arriba Baked Winter Squash (id: 137739)</div>
+      <div class="r-ingr">winter squash, mexican seasoning, mixed spice, honey, butter</div></div>
+    </div>
+    <div class="recipe-mini">
+      <div class="r-icon">🍌</div>
+      <div><div class="r-name">Beat This Banana Bread (id: 75452)</div>
+      <div class="r-ingr">sugar, unsalted butter, bananas, eggs, fresh lemon juice, flour</div></div>
+    </div>
+    <div class="recipe-mini">
+      <div class="r-icon">🍪</div>
+      <div><div class="r-name">Butterscotch Noodle Cookies (id: 23933)</div>
+      <div class="r-ingr">butterscotch chips, chinese noodles, salted peanuts</div></div>
+    </div>
+  </div>
+
+  <!-- Step 1: combined_text -->
+  <div class="card">
+    <div class="step-indicator" style="background:rgba(108,99,255,.15);color:var(--accent)">Bước 1</div>
+    <div class="card-title">Ghép text thành combined_text</div>
+    <p style="color:var(--text2);margin-bottom:.75rem">Mỗi recipe, ghép: <strong>ingredients ×2</strong> + <strong>tags ×2</strong> + <strong>description ×1</strong>. Ví dụ với Banana Bread:</p>
+
+    <div class="demo-box">
+      <div class="demo-label">combined_text của Banana Bread</div>
+      <div style="line-height:2">
+        <span class="tok tok-ingr">sugar</span>
+        <span class="tok tok-ingr">unsalted_butter</span>
+        <span class="tok tok-ingr">bananas</span>
+        <span class="tok tok-ingr">eggs</span>
+        <span class="tok tok-ingr">flour</span>
+        <span class="tok tok-ingr">sugar</span>
+        <span class="tok tok-ingr">unsalted_butter</span>
+        <span class="tok tok-ingr">bananas</span>
+        <span class="tok tok-ingr">eggs</span>
+        <span class="tok tok-ingr">flour</span>
+        <span class="tok tok-tag">weeknight</span>
+        <span class="tok tok-tag">course</span>
+        <span class="tok tok-tag">breads</span>
+        <span class="tok tok-tag">weeknight</span>
+        <span class="tok tok-tag">course</span>
+        <span class="tok tok-tag">breads</span>
+        <span class="tok tok-desc">from</span>
+        <span class="tok tok-desc">ann</span>
+        <span class="tok tok-desc">hodgman</span>
+        <span class="tok tok-desc">s</span>
+      </div>
+      <div style="margin-top:.75rem;font-size:.8rem;color:var(--text2)">
+        <span class="tok tok-ingr" style="font-size:.7rem">Tím</span> = ingredients (×2)
+        <span class="tok tok-tag" style="font-size:.7rem;margin-left:.5rem">Xanh</span> = tags (×2)
+        <span class="tok tok-desc" style="font-size:.7rem;margin-left:.5rem">Vàng</span> = description (×1)
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Vocabulary -->
+  <div class="card">
+    <div class="step-indicator" style="background:rgba(46,204,113,.15);color:var(--green)">Bước 2</div>
+    <div class="card-title">Tạo Vocabulary (từ điển)</div>
+    <p style="color:var(--text2);margin-bottom:.75rem">TF-IDF quét toàn bộ 77,300 recipes, tìm ra 20,000 từ/cụm từ quan trọng nhất. Mỗi từ = 1 cột trong vector.</p>
+
+    <div class="demo-box">
+      <div class="demo-label">Vocabulary (rút gọn 10 từ để minh họa)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.4rem">
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 0:</span> <span style="color:var(--accent)">sugar</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 1:</span> <span style="color:var(--accent)">butter</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 2:</span> <span style="color:var(--accent)">eggs</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 3:</span> <span style="color:var(--accent)">flour</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 4:</span> <span style="color:var(--accent)">bananas</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 5:</span> <span style="color:var(--accent)">squash</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 6:</span> <span style="color:var(--accent)">honey</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 7:</span> <span style="color:var(--accent)">breads</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 8:</span> <span style="color:var(--accent)">peanuts</span></div>
+        <div style="background:var(--surface);padding:4px 10px;border-radius:6px;font-size:.78rem;font-family:monospace"><span style="color:var(--text2)">col 9:</span> <span style="color:var(--accent)">mexican</span></div>
+      </div>
+      <p style="margin-top:.75rem;font-size:.82rem;color:var(--text2)">Thực tế: <strong>20,000 cột</strong>. Ở đây rút gọn 10 cột để dễ hình dung.</p>
+    </div>
+  </div>
+
+  <!-- Step 3: TF-IDF Calculation -->
+  <div class="card">
+    <div class="step-indicator" style="background:rgba(241,196,15,.15);color:var(--yellow)">Bước 3</div>
+    <div class="card-title">Tính TF-IDF cho từng từ</div>
+    <p style="color:var(--text2);margin-bottom:.5rem">Chọn 1 recipe để xem cách tính:</p>
+
+    <div class="demo-controls" id="tfidf-recipe-btns">
+      <button class="demo-btn active" data-recipe="banana">🍌 Banana Bread</button>
+      <button class="demo-btn" data-recipe="squash">🎃 Winter Squash</button>
+      <button class="demo-btn" data-recipe="cookies">🍪 Butterscotch Cookies</button>
+    </div>
+
+    <div id="tfidf-demo-area">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+  <!-- Step 4: Full TF-IDF Matrix -->
+  <div class="card">
+    <div class="step-indicator" style="background:rgba(255,107,107,.15);color:var(--accent2)">Bước 4</div>
+    <div class="card-title">Ma trận TF-IDF (mỗi hàng = 1 recipe, mỗi cột = 1 từ)</div>
+    <p style="color:var(--text2);margin-bottom:.75rem">Ghép tất cả recipe vectors lại → ta được <strong>ma trận TF-IDF</strong>. Trong dự án: <code>77,300 hàng × 20,000 cột</code>. Dưới đây là phiên bản thu nhỏ 3×10:</p>
+
+    <div class="demo-box" style="overflow-x:auto">
+      <div class="demo-label">recipe_tfidf_matrix (3 recipes × 10 từ)</div>
+      <div id="tfidf-matrix-viz"></div>
+      <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.78rem;color:var(--text2)">
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(255,107,107,.15);vertical-align:middle;margin-right:4px"></span>Cao (từ đặc trưng)</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(241,196,15,.1);vertical-align:middle;margin-right:4px"></span>Trung bình</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(46,52,74,.3);vertical-align:middle;margin-right:4px"></span>= 0 (không có từ này)</span>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--cyan);margin-top:1rem">
+      <div class="card-title">Tại sao gọi là Sparse (thưa)?</div>
+      <p style="color:var(--text2)">Mỗi recipe chỉ dùng ~20-50 từ trong vocabulary 20,000 từ → <strong>~99.8% ô = 0</strong>. Giống như ma trận rating, hầu hết ô đều trống. Vì vậy dùng <code>scipy.sparse</code> để tiết kiệm bộ nhớ (chỉ lưu ô khác 0).</p>
+    </div>
+  </div>
+
+  <!-- ────────── DEMO 2: COSINE SIMILARITY ────────── -->
+  <h3>B. Cosine Similarity — So sánh 2 recipes</h3>
+
+  <div class="card">
+    <div class="card-title">Ý tưởng: Đo "góc" giữa 2 vectors</div>
+    <p style="color:var(--text2);margin-bottom:1rem">Mỗi recipe là 1 mũi tên (vector) trong không gian 20,000 chiều. Cosine similarity đo góc giữa 2 mũi tên — góc càng nhỏ, 2 recipes càng giống nhau.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start" id="cosine-demo-grid">
+      <!-- Left: vector comparison bars -->
+      <div>
+        <div class="demo-controls" id="cosine-pair-btns">
+          <button class="demo-btn active" data-pair="banana-squash">🍌 vs 🎃</button>
+          <button class="demo-btn" data-pair="banana-cookies">🍌 vs 🍪</button>
+          <button class="demo-btn" data-pair="squash-cookies">🎃 vs 🍪</button>
+        </div>
+        <div id="cosine-bars-area"></div>
+        <div id="cosine-calc-area" style="margin-top:1rem"></div>
+      </div>
+      <!-- Right: angle visualization -->
+      <div style="text-align:center">
+        <div class="demo-label">Góc giữa 2 vectors (chiếu 2D)</div>
+        <canvas id="cosine-canvas" width="280" height="280" style="max-width:100%"></canvas>
+        <div id="cosine-result" style="margin-top:.5rem;font-size:1.1rem;font-weight:700"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--green)">
+    <div class="card-title">Ứng dụng trong dự án: Top-K Neighbors</div>
+    <p style="color:var(--text2)">Với mỗi recipe, tính cosine similarity với tất cả recipes khác → lấy <strong>Top-50 recipes giống nhất</strong> (neighbors). Khi user thích Banana Bread → gợi ý các neighbors của nó (có thể là Zucchini Bread, Blueberry Muffins, ...).</p>
+  </div>
+
+  <!-- ────────── DEMO 3: RATING MATRIX ────────── -->
+  <h3>C. Ma trận Rating (User × Recipe)</h3>
+
+  <div class="card">
+    <div class="card-title">Cách Collaborative Filtering "nhìn" dữ liệu</div>
+    <p style="color:var(--text2);margin-bottom:.75rem">Tất cả interactions được xếp thành 1 bảng lớn: hàng = user, cột = recipe, ô = rating. Trong dự án: <code>30,836 users × 77,300 recipes</code>.</p>
+
+    <div class="demo-box" style="overflow-x:auto">
+      <div class="demo-label">Ma trận Rating R (thu nhỏ: 6 users × 6 recipes)</div>
+      <div id="rating-matrix-viz"></div>
+      <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.78rem;color:var(--text2)">
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(255,107,107,.15);vertical-align:middle;margin-right:4px"></span>Rating 5</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(241,196,15,.1);vertical-align:middle;margin-right:4px"></span>Rating 3-4</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(108,99,255,.1);vertical-align:middle;margin-right:4px"></span>Rating 1-2</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(46,52,74,.3);vertical-align:middle;margin-right:4px"></span>Chưa đánh giá</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(46,204,113,.12);border:1px dashed #2ecc71;vertical-align:middle;margin-right:4px"></span>Cần dự đoán!</span>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--yellow);margin-top:1rem">
+      <div class="card-title">Sparsity = 99.97%</div>
+      <p style="color:var(--text2)">30,836 users × 77,300 recipes = <strong>2.38 tỷ ô</strong>. Nhưng chỉ có <strong>706,514 ratings</strong> → <strong>99.97% ô trống</strong>. Đây là thách thức lớn nhất: làm sao điền các ô "?" dựa trên các ô đã biết?</p>
+    </div>
+  </div>
+
+  <!-- ────────── DEMO 4: MATRIX FACTORIZATION ────────── -->
+  <h3>D. Matrix Factorization — "Phân tích" ma trận Rating</h3>
+
+  <div class="card">
+    <div class="card-title">Ý tưởng cốt lõi: Tìm "sở thích ẩn" (Latent Factors)</div>
+    <p style="color:var(--text2);margin-bottom:1rem">Thay vì lưu trực tiếp rating, ta phân tích mỗi user và recipe thành <strong>k đặc trưng ẩn</strong>. Ví dụ với k=3, mỗi factor có thể đại diện cho:</p>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem">
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.3rem">🍰</div>
+        <strong style="font-size:.85rem;color:var(--accent2)">Factor 1</strong>
+        <p style="font-size:.78rem;color:var(--text2);margin-top:.25rem">"Mức độ thích đồ ngọt"</p>
+      </div>
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.3rem">⏱️</div>
+        <strong style="font-size:.85rem;color:var(--yellow)">Factor 2</strong>
+        <p style="font-size:.78rem;color:var(--text2);margin-top:.25rem">"Thích món nhanh gọn"</p>
+      </div>
+      <div style="background:var(--surface2);padding:1rem;border-radius:8px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.3rem">🌶️</div>
+        <strong style="font-size:.85rem;color:var(--green)">Factor 3</strong>
+        <p style="font-size:.78rem;color:var(--text2);margin-top:.25rem">"Thích món cay/đậm đà"</p>
+      </div>
+    </div>
+
+    <div class="demo-box" style="overflow-x:auto">
+      <div class="demo-label">R ≈ U × V<sup>T</sup> (phân tích ma trận)</div>
+
+      <div class="matrix-flow">
+        <!-- R matrix -->
+        <div class="matrix-block">
+          <div class="block-label" style="color:var(--accent2)">R <span style="font-weight:400;color:var(--text2)">(Rating)</span></div>
+          <div style="display:flex;align-items:center">
+            <div class="bracket-left">[</div>
+            <div id="mf-R-matrix"></div>
+            <div class="bracket-right">]</div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:.3rem">6 users × 6 recipes</div>
+        </div>
+
+        <div class="op">≈</div>
+
+        <!-- U matrix -->
+        <div class="matrix-block">
+          <div class="block-label" style="color:var(--accent)">U <span style="font-weight:400;color:var(--text2)">(User factors)</span></div>
+          <div style="display:flex;align-items:center">
+            <div class="bracket-left">[</div>
+            <div id="mf-U-matrix"></div>
+            <div class="bracket-right">]</div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:.3rem">6 users × 3 factors</div>
+        </div>
+
+        <div class="op">×</div>
+
+        <!-- V^T matrix -->
+        <div class="matrix-block">
+          <div class="block-label" style="color:var(--green)">V<sup>T</sup> <span style="font-weight:400;color:var(--text2)">(Recipe factors)</span></div>
+          <div style="display:flex;align-items:center">
+            <div class="bracket-left">[</div>
+            <div id="mf-V-matrix"></div>
+            <div class="bracket-right">]</div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:.3rem">3 factors × 6 recipes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive prediction -->
+  <div class="card" style="border:1px solid var(--green)">
+    <div class="card-title">Thử dự đoán: User đánh giá Recipe bao nhiêu sao?</div>
+    <p style="color:var(--text2);margin-bottom:.75rem">Chọn 1 user và 1 recipe — xem cách nhân 2 vectors để ra rating dự đoán:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div>
+        <label style="font-size:.82rem;color:var(--text2);display:block;margin-bottom:.3rem">Chọn User:</label>
+        <select id="mf-user-select" style="width:100%;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.88rem">
+          <option value="0">User A (thích ngọt + nhanh)</option>
+          <option value="1">User B (thích cay + chậm)</option>
+          <option value="2">User C (thích ngọt + cay)</option>
+          <option value="3">User D (thích nhanh gọn)</option>
+          <option value="4">User E (ăn mọi thứ)</option>
+          <option value="5">User F (kén ăn)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.82rem;color:var(--text2);display:block;margin-bottom:.3rem">Chọn Recipe:</label>
+        <select id="mf-recipe-select" style="width:100%;padding:.5rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.88rem">
+          <option value="0">🎃 Winter Squash</option>
+          <option value="1">🍌 Banana Bread</option>
+          <option value="2">🍪 Butterscotch Cookies</option>
+          <option value="3">🥩 Lean Pork Chops</option>
+          <option value="4">🌮 Egg Roll Wraps</option>
+          <option value="5">🥗 Green Salad</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="mf-prediction-area" class="demo-box"></div>
+  </div>
+
+  <!-- Summary -->
+  <div class="card" style="border-left:3px solid var(--accent);margin-top:1.5rem">
+    <div class="card-title">Tổng kết: Toàn bộ flow từ Text → Gợi ý</div>
+    <div class="pipeline" style="margin:1rem 0">
+      <div class="pipe-step" style="min-width:120px">
+        <div style="font-size:1.3rem;margin-bottom:.3rem">📝</div>
+        <h4 style="font-size:.82rem">Text</h4>
+        <p style="font-size:.72rem">"sugar butter eggs flour"</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="min-width:120px">
+        <div style="font-size:1.3rem;margin-bottom:.3rem">🔢</div>
+        <h4 style="font-size:.82rem">TF-IDF Vector</h4>
+        <p style="font-size:.72rem">[0, 0.31, 0.28, ...]</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="min-width:120px">
+        <div style="font-size:1.3rem;margin-bottom:.3rem">📐</div>
+        <h4 style="font-size:.82rem">Cosine Sim</h4>
+        <p style="font-size:.72rem">sim(A,B) = 0.82</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="min-width:120px">
+        <div style="font-size:1.3rem;margin-bottom:.3rem">🏆</div>
+        <h4 style="font-size:.82rem">Top-K</h4>
+        <p style="font-size:.72rem">50 món giống nhất</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="min-width:120px;border-color:var(--green)">
+        <div style="font-size:1.3rem;margin-bottom:.3rem">🎯</div>
+        <h4 style="font-size:.82rem;color:var(--green)">Gợi ý!</h4>
+        <p style="font-size:.72rem">Rank + Filter → hiển thị</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ═══════════════════ SECTION: GLOSSARY ═══════════════════ -->
+<section id="glossary" style="background:var(--surface)">
+<div class="container reveal">
+  <h2>8. Bảng thuật ngữ</h2>
+  <p class="subtitle">Giải thích nhanh các khái niệm quan trọng trong dự án.</p>
+  <div class="tbl-wrap"><table>
+    <tr><th style="width:220px">Thuật ngữ</th><th>Giải thích</th></tr>
+    <tr><td><strong>TF-IDF</strong></td><td>Term Frequency–Inverse Document Frequency. Cách chuyển text thành số: từ quan trọng (xuất hiện nhiều trong 1 doc, ít trong toàn corpus) có trọng số cao.</td></tr>
+    <tr><td><strong>Cosine Similarity</strong></td><td>Đo độ tương tự giữa 2 vectors bằng góc giữa chúng. Giá trị 0→1. Dùng để so sánh 2 recipes dựa trên TF-IDF vectors.</td></tr>
+    <tr><td><strong>Sparse Matrix</strong></td><td>Ma trận mà đa số giá trị = 0. Ma trận rating (30K users × 77K recipes) có ~99.97% ô trống. Dùng scipy.sparse để tiết kiệm bộ nhớ.</td></tr>
+    <tr><td><strong>Matrix Factorization</strong></td><td>Phân tích ma trận rating R ≈ U×V<sup>T</sup> thành 2 ma trận nhỏ hơn. Mỗi user/recipe được biểu diễn bằng k "latent factors".</td></tr>
+    <tr><td><strong>Cold Start</strong></td><td>Vấn đề khi user hoặc recipe mới chưa có interaction nào → CF không hoạt động. Giải pháp: Popularity hoặc Content-Based.</td></tr>
+    <tr><td><strong>Data Leakage</strong></td><td>Khi thông tin từ test/validation set vô tình rò rỉ vào training → model "gian lận". Giải pháp: split trước khi tạo features.</td></tr>
+    <tr><td><strong>Iterative Sparse Filter</strong></td><td>Lọc lặp đi lặp lại: loại user ít interaction → recipe mất rating → loại tiếp → lặp cho đến khi hội tụ.</td></tr>
+    <tr><td><strong>Bayesian Smoothing</strong></td><td>Kỹ thuật tránh bias: recipe chỉ có 1 rating = 5.0 không nên rank cao hơn recipe có 100 ratings trung bình 4.8.</td></tr>
+    <tr><td><strong>Hybrid Model</strong></td><td>Kết hợp nhiều phương pháp recommendation (Content + CF + Popularity) để bù trừ điểm yếu của nhau.</td></tr>
+    <tr><td><strong>Latent Factors</strong></td><td>Các "đặc trưng ẩn" mà model tự học. Ví dụ: factor 1 có thể đại diện cho "món ngọt", factor 2 cho "món nhanh".</td></tr>
+    <tr><td><strong>Anti-Leakage Split</strong></td><td>Split train/val theo <strong>thời gian</strong> (data cũ = train, data mới = val) thay vì random, để mô phỏng thực tế.</td></tr>
+    <tr><td><strong>Sublinear TF</strong></td><td>Dùng <code>1 + log(tf)</code> thay vì tf thô. Giảm ảnh hưởng của từ lặp quá nhiều lần trong 1 document.</td></tr>
+    <tr><td><strong>n-gram</strong></td><td>Cụm n từ liên tiếp. Unigram = 1 từ ("sugar"), Bigram = 2 từ ("brown sugar"). Dự án dùng (1,2)-gram.</td></tr>
+    <tr><td><strong>min_df / max_df</strong></td><td><code>min_df=5</code>: bỏ từ xuất hiện &lt;5 docs (quá hiếm). <code>max_df=0.95</code>: bỏ từ xuất hiện &gt;95% docs (quá phổ biến, không phân biệt).</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>Food Recommendation System — Project Documentation</p>
+  <p style="margin-top:.25rem;font-size:.8rem">Dataset: Food.com Recipes &amp; User Interactions (Kaggle) • Built with Python, pandas, scikit-learn</p>
+</footer>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.closest('div').parentElement;
+    group.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    group.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Scroll reveal
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// Active nav
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.topnav a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 100) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+
+// ═══════════════════ INTERACTIVE DEMOS ═══════════════════
+
+// --- Data from the real project ---
+const VOCAB = ['sugar','butter','eggs','flour','bananas','squash','honey','breads','peanuts','mexican'];
+
+const RECIPES = {
+  banana: {
+    name: '🍌 Banana Bread',
+    tf:     [4, 2, 2, 2, 4, 0, 0, 4, 0, 0],
+    idf:    [1.8, 2.1, 2.3, 2.0, 4.9, 5.1, 4.6, 3.8, 4.7, 5.2],
+    tfidf:  [0.34, 0.22, 0.21, 0.19, 0.41, 0,    0,    0.31, 0,    0   ]
+  },
+  squash: {
+    name: '🎃 Winter Squash',
+    tf:     [0, 2, 0, 0, 0, 4, 2, 0, 0, 4],
+    idf:    [1.8, 2.1, 2.3, 2.0, 4.9, 5.1, 4.6, 3.8, 4.7, 5.2],
+    tfidf:  [0,    0.18, 0,    0,    0,    0.47, 0.35, 0,    0,    0.43]
+  },
+  cookies: {
+    name: '🍪 Butterscotch Cookies',
+    tf:     [0, 0, 0, 0, 0, 0, 0, 0, 4, 0],
+    idf:    [1.8, 2.1, 2.3, 2.0, 4.9, 5.1, 4.6, 3.8, 4.7, 5.2],
+    tfidf:  [0,    0,    0,    0,    0,    0,    0,    0,    0.52, 0   ]
+  }
+};
+
+// --- DEMO: TF-IDF per recipe ---
+function renderTfidfDemo(recipeKey) {
+  const r = RECIPES[recipeKey];
+  const area = document.getElementById('tfidf-demo-area');
+  const maxTfidf = Math.max(...r.tfidf);
+
+  let html = '<div class="demo-box"><div class="demo-label">TF-IDF tính toán cho ' + r.name + '</div>';
+  html += '<div style="overflow-x:auto"><table style="font-size:.8rem"><tr><th>Từ</th><th>TF <span style="font-weight:400;color:var(--text2)">(số lần xuất hiện)</span></th><th>IDF <span style="font-weight:400;color:var(--text2)">(log hiếm)</span></th><th>TF-IDF = TF × IDF (chuẩn hóa)</th></tr>';
+
+  for (let i = 0; i < VOCAB.length; i++) {
+    const isNonZero = r.tfidf[i] > 0;
+    const rowStyle = isNonZero ? '' : 'opacity:.45';
+    html += '<tr style="' + rowStyle + '"><td><code>' + VOCAB[i] + '</code></td>';
+    html += '<td>' + r.tf[i] + '</td>';
+    html += '<td>' + r.idf[i].toFixed(1) + '</td>';
+    html += '<td style="font-weight:600;color:' + (isNonZero ? 'var(--accent2)' : 'var(--text2)') + '">' + r.tfidf[i].toFixed(2) + '</td></tr>';
+  }
+  html += '</table></div></div>';
+
+  html += '<div class="demo-box"><div class="demo-label">Vector kết quả của ' + r.name + '</div>';
+  html += '<div class="bar-chart">';
+  for (let i = 0; i < VOCAB.length; i++) {
+    const pct = maxTfidf > 0 ? (r.tfidf[i] / maxTfidf * 100) : 0;
+    const color = r.tfidf[i] > 0.35 ? 'var(--accent2)' : r.tfidf[i] > 0.15 ? 'var(--yellow)' : 'var(--text2)';
+    html += '<div class="bar-row"><div class="bar-label">' + VOCAB[i] + '</div>';
+    html += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '">' + (r.tfidf[i] > 0 ? r.tfidf[i].toFixed(2) : '') + '</div></div>';
+    html += '<div class="bar-val">' + r.tfidf[i].toFixed(2) + '</div></div>';
+  }
+  html += '</div>';
+  html += '<p style="margin-top:.75rem;font-size:.82rem;color:var(--text2)">Đây chính là <strong>1 hàng</strong> trong ma trận TF-IDF. Mỗi recipe có 1 vector như thế này (thực tế 20,000 chiều).</p>';
+  html += '</div>';
+
+  area.innerHTML = html;
+  // Animate bars
+  setTimeout(() => {
+    area.querySelectorAll('.bar-fill').forEach(b => { const w = b.style.width; b.style.width = '0'; requestAnimationFrame(() => b.style.width = w); });
+  }, 50);
+}
+
+document.getElementById('tfidf-recipe-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.demo-btn');
+  if (!btn) return;
+  document.querySelectorAll('#tfidf-recipe-btns .demo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTfidfDemo(btn.dataset.recipe);
+});
+renderTfidfDemo('banana');
+
+// --- DEMO: TF-IDF MATRIX ---
+function renderTfidfMatrix() {
+  const el = document.getElementById('tfidf-matrix-viz');
+  const recipes = ['squash','banana','cookies'];
+  const names = ['🎃 Squash','🍌 Banana','🍪 Cookies'];
+  const cols = VOCAB.length + 1;
+
+  let html = '<div class="matrix-grid" style="grid-template-columns: 100px repeat(' + VOCAB.length + ', 60px)">';
+  // Header
+  html += '<div class="cell cell-header"></div>';
+  for (const v of VOCAB) html += '<div class="cell cell-header">' + v + '</div>';
+  // Rows
+  for (let r = 0; r < recipes.length; r++) {
+    html += '<div class="cell cell-row-header">' + names[r] + '</div>';
+    for (let c = 0; c < VOCAB.length; c++) {
+      const val = RECIPES[recipes[r]].tfidf[c];
+      let cls = 'cell cell-value ';
+      if (val === 0) cls += 'cell-empty';
+      else if (val > 0.35) cls += 'cell-hot';
+      else if (val > 0.15) cls += 'cell-warm';
+      else cls += 'cell-cool';
+      html += '<div class="' + cls + '">' + (val === 0 ? '0' : val.toFixed(2)) + '</div>';
+    }
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+renderTfidfMatrix();
+
+// --- DEMO: COSINE SIMILARITY ---
+const COSINE_PAIRS = {
+  'banana-squash': { a: 'banana', b: 'squash' },
+  'banana-cookies': { a: 'banana', b: 'cookies' },
+  'squash-cookies': { a: 'squash', b: 'cookies' }
+};
+
+function dotProduct(a, b) { return a.reduce((s, v, i) => s + v * b[i], 0); }
+function magnitude(a) { return Math.sqrt(a.reduce((s, v) => s + v * v, 0)); }
+function cosineSim(a, b) {
+  const d = dotProduct(a, b);
+  const m = magnitude(a) * magnitude(b);
+  return m === 0 ? 0 : d / m;
+}
+
+function renderCosineBars(pairKey) {
+  const pair = COSINE_PAIRS[pairKey];
+  const ra = RECIPES[pair.a], rb = RECIPES[pair.b];
+  const sim = cosineSim(ra.tfidf, rb.tfidf);
+  const maxVal = Math.max(...ra.tfidf, ...rb.tfidf);
+
+  const barsEl = document.getElementById('cosine-bars-area');
+  let html = '<div class="demo-box"><div class="demo-label">So sánh 2 vectors từng chiều</div>';
+  html += '<div style="overflow-x:auto"><table style="font-size:.8rem"><tr><th>Từ</th><th>' + ra.name + '</th><th>' + rb.name + '</th><th>A×B</th></tr>';
+  let products = [];
+  for (let i = 0; i < VOCAB.length; i++) {
+    const prod = ra.tfidf[i] * rb.tfidf[i];
+    products.push(prod);
+    const highlight = prod > 0 ? 'color:var(--green);font-weight:700' : 'color:var(--text2);opacity:.5';
+    html += '<tr><td><code>' + VOCAB[i] + '</code></td>';
+    html += '<td>' + ra.tfidf[i].toFixed(2) + '</td>';
+    html += '<td>' + rb.tfidf[i].toFixed(2) + '</td>';
+    html += '<td style="' + highlight + '">' + prod.toFixed(3) + '</td></tr>';
+  }
+  html += '</table></div></div>';
+
+  // Calculation breakdown
+  const calcEl = document.getElementById('cosine-calc-area');
+  const dot = dotProduct(ra.tfidf, rb.tfidf);
+  const magA = magnitude(ra.tfidf);
+  const magB = magnitude(rb.tfidf);
+  let calc = '<div class="demo-box"><div class="demo-label">Công thức tính</div>';
+  calc += '<div style="font-family:monospace;font-size:.82rem;line-height:2">';
+  calc += '<div>A · B = ' + products.filter(p => p > 0).map(p => p.toFixed(3)).join(' + ') + ' = <strong style="color:var(--green)">' + dot.toFixed(4) + '</strong></div>';
+  calc += '<div>||A|| = √(' + ra.tfidf.filter(v => v > 0).map(v => v.toFixed(2) + '²').join('+') + ') = <strong>' + magA.toFixed(4) + '</strong></div>';
+  calc += '<div>||B|| = √(' + rb.tfidf.filter(v => v > 0).map(v => v.toFixed(2) + '²').join('+') + ') = <strong>' + magB.toFixed(4) + '</strong></div>';
+  calc += '<div style="margin-top:.5rem;font-size:1rem">cosine = <strong style="color:var(--accent2)">' + dot.toFixed(4) + '</strong> / (<strong>' + magA.toFixed(4) + '</strong> × <strong>' + magB.toFixed(4) + '</strong>) = <span style="font-size:1.3rem;color:var(--green);font-weight:800">' + sim.toFixed(4) + '</span></div>';
+  calc += '</div></div>';
+
+  barsEl.innerHTML = html;
+  calcEl.innerHTML = calc;
+
+  // Draw angle on canvas
+  drawCosineAngle(sim, ra.name, rb.name);
+}
+
+function drawCosineAngle(sim, nameA, nameB) {
+  const canvas = document.getElementById('cosine-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 280, H = 280, cx = 40, cy = H - 40, len = 200;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  const angle = Math.acos(Math.min(1, Math.max(0, sim)));
+
+  // Grid
+  ctx.strokeStyle = '#2e3345';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const x = cx + (len / 5) * i;
+    ctx.beginPath(); ctx.moveTo(x, cy); ctx.lineTo(x, cy - len); ctx.stroke();
+    const y = cy - (len / 5) * i;
+    ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx + len, y); ctx.stroke();
+  }
+
+  // Angle arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, 50, -Math.PI/2 + angle, -Math.PI/2 + 0.001, true);
+  ctx.strokeStyle = 'rgba(241,196,15,.5)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Angle label
+  const angleDeg = (angle * 180 / Math.PI).toFixed(1);
+  const midAngle = -Math.PI/2 + angle/2;
+  ctx.fillStyle = '#f1c40f';
+  ctx.font = 'bold 13px Segoe UI';
+  ctx.fillText(angleDeg + '°', cx + 55 * Math.cos(midAngle) - 8, cy + 55 * Math.sin(midAngle) + 4);
+
+  // Vector A (vertical-ish)
+  const axEnd = cx + len * Math.cos(-Math.PI/2);
+  const ayEnd = cy + len * Math.sin(-Math.PI/2);
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(axEnd, ayEnd);
+  ctx.strokeStyle = '#6c63ff'; ctx.lineWidth = 3; ctx.stroke();
+  drawArrow(ctx, cx, cy, axEnd, ayEnd, '#6c63ff');
+  ctx.fillStyle = '#6c63ff'; ctx.font = 'bold 12px Segoe UI';
+  ctx.fillText(nameA.substring(0,2), axEnd - 16, ayEnd - 8);
+
+  // Vector B
+  const bxEnd = cx + len * Math.cos(-Math.PI/2 + angle);
+  const byEnd = cy + len * Math.sin(-Math.PI/2 + angle);
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(bxEnd, byEnd);
+  ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3; ctx.stroke();
+  drawArrow(ctx, cx, cy, bxEnd, byEnd, '#ff6b6b');
+  ctx.fillStyle = '#ff6b6b'; ctx.font = 'bold 12px Segoe UI';
+  ctx.fillText(nameB.substring(0,2), bxEnd + 6, byEnd + 4);
+
+  // Result text
+  const resEl = document.getElementById('cosine-result');
+  const simPct = (sim * 100).toFixed(1);
+  const color = sim > 0.3 ? 'var(--green)' : sim > 0.1 ? 'var(--yellow)' : 'var(--accent2)';
+  const desc = sim > 0.3 ? 'Khá giống nhau!' : sim > 0.1 ? 'Hơi giống' : 'Rất khác nhau';
+  resEl.innerHTML = '<span style="color:' + color + '">Similarity: ' + sim.toFixed(4) + ' (' + simPct + '%)</span><br><span style="font-size:.82rem;font-weight:400;color:var(--text2)">' + desc + '</span>';
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color) {
+  const a = Math.atan2(y2-y1, x2-x1);
+  const hl = 10;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - hl*Math.cos(a-0.4), y2 - hl*Math.sin(a-0.4));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - hl*Math.cos(a+0.4), y2 - hl*Math.sin(a+0.4));
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+}
+
+document.getElementById('cosine-pair-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.demo-btn');
+  if (!btn) return;
+  document.querySelectorAll('#cosine-pair-btns .demo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCosineBars(btn.dataset.pair);
+});
+renderCosineBars('banana-squash');
+
+// --- DEMO: RATING MATRIX ---
+const USERS_R = ['User A','User B','User C','User D','User E','User F'];
+const RECIPES_R = ['🎃 Squash','🍌 Banana','🍪 Cookies','🥩 Pork','🌮 Egg Roll','🥗 Salad'];
+const RATING_MATRIX = [
+  [null, 5,    4,    null, null, 3   ],
+  [4,    null, null, 5,    4,    null],
+  [null, 4,    5,    null, 3,    null],
+  [null, null, null, 4,    5,    5   ],
+  [3,    5,    4,    3,    null, 4   ],
+  [null, null, 2,    null, null, null]
+];
+const PREDICT_CELLS = [[0,0],[0,3],[1,1],[2,3],[3,0],[5,0],[5,4]];
+
+function renderRatingMatrix() {
+  const el = document.getElementById('rating-matrix-viz');
+  const predictSet = new Set(PREDICT_CELLS.map(c => c[0]+','+c[1]));
+
+  let html = '<div class="matrix-grid" style="grid-template-columns: 80px repeat(6, 72px)">';
+  html += '<div class="cell cell-header"></div>';
+  for (const name of RECIPES_R) html += '<div class="cell cell-header">' + name + '</div>';
+
+  for (let r = 0; r < USERS_R.length; r++) {
+    html += '<div class="cell cell-row-header">' + USERS_R[r] + '</div>';
+    for (let c = 0; c < RECIPES_R.length; c++) {
+      const val = RATING_MATRIX[r][c];
+      const isPredict = predictSet.has(r+','+c);
+      if (val === null && isPredict) {
+        html += '<div class="cell cell-value cell-predict">?</div>';
+      } else if (val === null) {
+        html += '<div class="cell cell-value cell-empty">—</div>';
+      } else {
+        let cls = 'cell cell-value ';
+        if (val >= 5) cls += 'cell-hot';
+        else if (val >= 3) cls += 'cell-warm';
+        else cls += 'cell-cool';
+        html += '<div class="' + cls + '">★' + val + '</div>';
+      }
+    }
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+renderRatingMatrix();
+
+// --- DEMO: MATRIX FACTORIZATION ---
+// U: 6 users × 3 factors (sweet, quick, spicy)
+const U_MATRIX = [
+  [0.9, 0.8, 0.1],
+  [0.1, 0.3, 0.9],
+  [0.8, 0.4, 0.7],
+  [0.2, 0.9, 0.3],
+  [0.7, 0.6, 0.5],
+  [0.3, 0.2, 0.1]
+];
+// V^T: 3 factors × 6 recipes
+const VT_MATRIX = [
+  [0.1, 0.9, 0.8, 0.2, 0.3, 0.4],
+  [0.3, 0.7, 0.5, 0.6, 0.8, 0.9],
+  [0.8, 0.1, 0.2, 0.9, 0.7, 0.3]
+];
+const FACTOR_COLORS = ['var(--accent2)','var(--yellow)','var(--green)'];
+const FACTOR_NAMES = ['🍰 Ngọt','⏱️ Nhanh','🌶️ Cay'];
+
+function renderMFMatrices() {
+  // R (approximated)
+  let rHtml = '<div class="matrix-grid" style="grid-template-columns: repeat(6, 42px);gap:2px">';
+  for (let i = 0; i < 6; i++) {
+    for (let j = 0; j < 6; j++) {
+      let val = 0;
+      for (let k = 0; k < 3; k++) val += U_MATRIX[i][k] * VT_MATRIX[k][j];
+      val = Math.min(5, Math.max(1, val * 3.2 + 0.5));
+      const disp = val.toFixed(1);
+      let cls = 'cell cell-value ';
+      if (val >= 4) cls += 'cell-hot';
+      else if (val >= 2.5) cls += 'cell-warm';
+      else cls += 'cell-cool';
+      rHtml += '<div class="' + cls + '" style="font-size:.68rem">' + disp + '</div>';
+    }
+  }
+  rHtml += '</div>';
+  document.getElementById('mf-R-matrix').innerHTML = rHtml;
+
+  // U
+  let uHtml = '<div class="matrix-grid" style="grid-template-columns: repeat(3, 42px);gap:2px">';
+  for (let i = 0; i < 6; i++) {
+    for (let j = 0; j < 3; j++) {
+      const val = U_MATRIX[i][j];
+      const opacity = 0.2 + val * 0.8;
+      uHtml += '<div class="cell cell-value" style="color:' + FACTOR_COLORS[j] + ';opacity:' + opacity + ';font-size:.72rem">' + val.toFixed(1) + '</div>';
+    }
+  }
+  uHtml += '</div>';
+  document.getElementById('mf-U-matrix').innerHTML = uHtml;
+
+  // V^T
+  let vHtml = '<div class="matrix-grid" style="grid-template-columns: repeat(6, 42px);gap:2px">';
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 6; j++) {
+      const val = VT_MATRIX[i][j];
+      const opacity = 0.2 + val * 0.8;
+      vHtml += '<div class="cell cell-value" style="color:' + FACTOR_COLORS[i] + ';opacity:' + opacity + ';font-size:.72rem">' + val.toFixed(1) + '</div>';
+    }
+  }
+  vHtml += '</div>';
+  document.getElementById('mf-V-matrix').innerHTML = vHtml;
+}
+renderMFMatrices();
+
+// --- DEMO: MF PREDICTION ---
+function renderMFPrediction() {
+  const uIdx = parseInt(document.getElementById('mf-user-select').value);
+  const rIdx = parseInt(document.getElementById('mf-recipe-select').value);
+  const el = document.getElementById('mf-prediction-area');
+
+  const uVec = U_MATRIX[uIdx];
+  const rVec = VT_MATRIX.map(row => row[rIdx]);
+
+  let products = [];
+  let dot = 0;
+  for (let k = 0; k < 3; k++) {
+    const p = uVec[k] * rVec[k];
+    products.push(p);
+    dot += p;
+  }
+  const predicted = Math.min(5, Math.max(1, dot * 3.2 + 0.5));
+
+  let html = '<div class="demo-label">Dự đoán: ' + USERS_R[uIdx] + ' → ' + RECIPES_R[rIdx] + '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:.75rem;align-items:center;margin:1rem 0">';
+
+  // User vector
+  html += '<div style="text-align:center"><div style="font-size:.75rem;color:var(--text2);margin-bottom:.5rem">U[' + USERS_R[uIdx] + ']</div>';
+  for (let k = 0; k < 3; k++) {
+    const pct = uVec[k] * 100;
+    html += '<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:4px;font-size:.78rem">';
+    html += '<span style="min-width:60px;text-align:right;color:' + FACTOR_COLORS[k] + ';font-size:.7rem">' + FACTOR_NAMES[k] + '</span>';
+    html += '<div style="flex:1;height:18px;background:var(--surface);border-radius:4px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + FACTOR_COLORS[k] + ';opacity:.6;border-radius:4px"></div></div>';
+    html += '<span style="min-width:30px;font-family:monospace;font-size:.75rem">' + uVec[k].toFixed(1) + '</span></div>';
+  }
+  html += '</div>';
+
+  html += '<div style="font-size:1.5rem;font-weight:800;color:var(--text2)">·</div>';
+
+  // Recipe vector
+  html += '<div style="text-align:center"><div style="font-size:.75rem;color:var(--text2);margin-bottom:.5rem">V[' + RECIPES_R[rIdx] + ']</div>';
+  for (let k = 0; k < 3; k++) {
+    const pct = rVec[k] * 100;
+    html += '<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:4px;font-size:.78rem">';
+    html += '<span style="min-width:60px;text-align:right;color:' + FACTOR_COLORS[k] + ';font-size:.7rem">' + FACTOR_NAMES[k] + '</span>';
+    html += '<div style="flex:1;height:18px;background:var(--surface);border-radius:4px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + FACTOR_COLORS[k] + ';opacity:.6;border-radius:4px"></div></div>';
+    html += '<span style="min-width:30px;font-family:monospace;font-size:.75rem">' + rVec[k].toFixed(1) + '</span></div>';
+  }
+  html += '</div>';
+
+  html += '<div style="font-size:1.5rem;font-weight:800;color:var(--text2)">=</div>';
+
+  // Result
+  html += '<div style="text-align:center">';
+  html += '<div style="font-size:.75rem;color:var(--text2);margin-bottom:.5rem">Kết quả</div>';
+  const stars = Math.round(predicted);
+  html += '<div style="font-size:2rem;font-weight:800;color:var(--green)">' + predicted.toFixed(1) + '</div>';
+  html += '<div style="font-size:1.2rem;color:var(--yellow)">' + '★'.repeat(stars) + '<span style="color:var(--text2)">' + '☆'.repeat(5-stars) + '</span></div>';
+  html += '</div>';
+
+  html += '</div>';
+
+  // Calculation detail
+  html += '<div style="background:var(--surface);padding:.75rem 1rem;border-radius:8px;font-family:monospace;font-size:.82rem;line-height:2">';
+  for (let k = 0; k < 3; k++) {
+    html += '<span style="color:' + FACTOR_COLORS[k] + '">' + FACTOR_NAMES[k] + ': ' + uVec[k].toFixed(1) + ' × ' + rVec[k].toFixed(1) + ' = ' + products[k].toFixed(2) + '</span><br>';
+  }
+  html += '<div style="border-top:1px solid var(--border);margin-top:.25rem;padding-top:.25rem">dot product = ' + products.map(p => p.toFixed(2)).join(' + ') + ' = <strong>' + dot.toFixed(2) + '</strong>';
+  html += ' → scale → <strong style="color:var(--green);font-size:1.1rem">' + predicted.toFixed(1) + ' sao</strong></div>';
+  html += '</div>';
+
+  // Interpretation
+  html += '<div style="margin-top:1rem;padding:.75rem 1rem;border-radius:8px;border-left:3px solid var(--cyan);background:var(--surface);font-size:.85rem;color:var(--text2)">';
+  const maxK = uVec.indexOf(Math.max(...uVec));
+  const recMaxK = rVec.indexOf(Math.max(...rVec));
+  if (maxK === recMaxK) {
+    html += '<strong style="color:var(--green)">Match tốt!</strong> User và Recipe đều có factor <strong style="color:' + FACTOR_COLORS[maxK] + '">' + FACTOR_NAMES[maxK] + '</strong> cao → rating dự đoán cao.';
+  } else {
+    html += 'User thích <strong style="color:' + FACTOR_COLORS[maxK] + '">' + FACTOR_NAMES[maxK] + '</strong> nhất, nhưng recipe mạnh về <strong style="color:' + FACTOR_COLORS[recMaxK] + '">' + FACTOR_NAMES[recMaxK] + '</strong> → ' + (predicted > 3.5 ? 'vẫn khá phù hợp.' : 'không thật sự phù hợp.');
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+document.getElementById('mf-user-select').addEventListener('change', renderMFPrediction);
+document.getElementById('mf-recipe-select').addEventListener('change', renderMFPrediction);
+renderMFPrediction();
+</script>
+</body>
+</html>
