@@ -142,6 +142,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--text2);font-size:.82rem
 <div class="topnav-inner">
   <div class="logo">🍽️ FoodRecSys</div>
   <a href="#overview">Tổng quan</a>
+  <a href="#techniques">Kỹ thuật</a>
   <a href="#dataset">Dataset</a>
   <a href="#nb01">01 EDA</a>
   <a href="#nb02">02 Cleaning</a>
@@ -154,7 +155,7 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--text2);font-size:.82rem
 
 <header class="hero">
   <h1>Food Recommendation System</h1>
-  <p>Hướng dẫn toàn diện — từ dataset thô đến mô hình Hybrid Recommendation. Mỗi notebook, mỗi biến, mỗi bước.</p>
+  <p>Tài liệu kỹ thuật dự án: workflow end-to-end, các kỹ thuật xử lý dữ liệu, thuật toán recommender và cách mô hình ra quyết định.</p>
 </header>
 
 <!-- ══════════ 1. OVERVIEW ══════════ -->
@@ -176,6 +177,95 @@ footer{text-align:center;padding:2.5rem 1rem;color:var(--text2);font-size:.82rem
     <div class="ps"><div class="n" style="background:rgba(241,196,15,.2);color:var(--yellow)">2</div><h4>Cleaning</h4><p>Làm sạch & lọc sparse</p></div><div class="pa">→</div>
     <div class="ps"><div class="n" style="background:rgba(230,126,34,.2);color:var(--orange)">3</div><h4>Features</h4><p>TF-IDF, similarity, user/item</p></div><div class="pa">→</div>
     <div class="ps" style="border-color:var(--green)"><div class="n" style="background:rgba(255,107,107,.2);color:var(--accent2)">4</div><h4>Models</h4><p>Pop + CB + CF + Hybrid</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════ 1.5 TECHNIQUES & ALGORITHMS ══════════ -->
+<section id="techniques" class="alt">
+<div class="container reveal">
+  <h2>1.5. Kỹ thuật và thuật toán sử dụng</h2>
+  <p class="sub">Tóm tắt nhanh những gì hệ thống đang dùng trong bản triển khai hiện tại.</p>
+
+  <h3>A. Kỹ thuật xử lý dữ liệu</h3>
+  <div class="g2">
+    <div class="card">
+      <div class="ct"><span class="badge by">Data Quality</span> Data Cleaning & Validation</div>
+      <ul style="color:var(--text2);padding-left:1.2rem;display:flex;flex-direction:column;gap:.35rem">
+        <li>Ép kiểu dữ liệu, xử lý null, loại duplicate.</li>
+        <li>Parse cột list-like bằng <code>ast.literal_eval</code>.</li>
+        <li>Lọc dữ liệu bất thường: <code>minutes</code>, <code>calories</code>, <code>rating</code>.</li>
+        <li>Đồng bộ khóa <code>recipe_id</code> giữa recipes và interactions.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="badge bo">Protocol</span> Temporal Split & Anti-leakage</div>
+      <ul style="color:var(--text2);padding-left:1.2rem;display:flex;flex-direction:column;gap:.35rem">
+        <li>Chia train/validation theo thời gian (80/20).</li>
+        <li>Feature user/item chỉ tính trên train set.</li>
+        <li>Đánh giá trên unseen relevant items trong validation.</li>
+        <li>Tách báo cáo riêng cho cold-start users.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>B. Thuật toán recommender chính</h3>
+  <div class="g2">
+    <div class="card">
+      <div class="ct"><span class="badge bg">Baseline</span> Popularity-Based Ranking</div>
+      <p style="color:var(--text2)">
+        Xếp hạng món ăn theo <code>popularity_score</code> (Bayesian smoothing từ rating mean và rating count).
+        Dùng làm baseline và fallback cho user mới.
+      </p>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="badge bc">Content</span> Content-Based Filtering</div>
+      <p style="color:var(--text2)">
+        Dùng <code>TF-IDF</code> để vector hóa recipe text, sau đó tính <code>cosine similarity</code> item-item.
+        Món user thích (rating &gt;= 4) sẽ kéo theo các món tương tự.
+      </p>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="badge bp">CF</span> Collaborative Filtering (TruncatedSVD)</div>
+      <p style="color:var(--text2)">
+        Factorize ma trận user-item sparse thành latent factors bằng <code>TruncatedSVD</code>, dự đoán điểm theo dot-product
+        user vector và item vector, rồi rank top-N.
+      </p>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="badge br">Hybrid</span> Hybrid Recommendation</div>
+      <p style="color:var(--text2)">
+        Kết hợp Content + CF theo trọng số (alpha theo mức hoạt động user), kèm fallback an toàn sang popularity khi thiếu tín hiệu.
+        Có hỗ trợ ràng buộc như calories/minutes khi trả kết quả.
+      </p>
+    </div>
+  </div>
+
+  <h3>C. Công thức cốt lõi (giải thích ngắn)</h3>
+  <div class="card">
+    <div class="tbl-wrap"><table>
+      <tr><th>Thuật toán</th><th>Công thức</th><th>Ý nghĩa thực tế</th></tr>
+      <tr>
+        <td><strong>TF-IDF</strong></td>
+        <td><code>tfidf(t,d) = tf(t,d) * idf(t)</code></td>
+        <td>Từ quan trọng với một recipe nhưng hiếm toàn tập dữ liệu sẽ có trọng số cao hơn.</td>
+      </tr>
+      <tr>
+        <td><strong>Cosine Similarity</strong></td>
+        <td><code>cos(a,b) = (a·b) / (||a|| ||b||)</code></td>
+        <td>Đo mức giống nhau giữa hai recipe vectors, không phụ thuộc độ dài văn bản.</td>
+      </tr>
+      <tr>
+        <td><strong>Bayesian Popularity</strong></td>
+        <td><code>(v/(v+m))*R + (m/(v+m))*C</code></td>
+        <td>Giảm bias cho món có quá ít lượt đánh giá.</td>
+      </tr>
+      <tr>
+        <td><strong>Hybrid Score</strong></td>
+        <td><code>alpha * content_norm + (1-alpha) * cf_norm</code></td>
+        <td>Cân bằng giữa tương đồng nội dung và hành vi cộng đồng.</td>
+      </tr>
+    </table></div>
   </div>
 </div>
 </section>
@@ -453,7 +543,7 @@ popularity_score = (v/(v+m)) * R + (m/(v+m)) * C
 <section id="nb04" class="alt">
 <div class="container reveal">
   <h2>6. Notebook 04 — Recommendation Models</h2>
-  <p class="sub"><code>04_recommendation_model.ipynb</code> · 9 cells · Cell 1–2 <span class="status-done">✓ Done</span>, Cell 3–9 <span class="status-plan">Plan</span></p>
+  <p class="sub"><code>04_recommendation_model.ipynb</code> · 9 cells · <span class="status-done">✓ Đã triển khai và chạy evaluation</span></p>
 
   <!-- Cell 1 -->
   <h3>Cell 1 — Load Artifacts <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
@@ -488,7 +578,7 @@ popularity_score = (v/(v+m)) * R + (m/(v+m)) * C
   </div>
 
   <!-- Cell 3 -->
-  <h3>Cell 3 — Content-Based Recommender <span class="badge bo" style="margin-left:.5rem">Plan</span></h3>
+  <h3>Cell 3 — Content-Based Recommender <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card" style="border-left:3px solid var(--orange)">
     <div class="ct">Gợi ý dựa trên nội dung recipe tương tự</div>
     <div class="g2" style="margin-top:.75rem">
@@ -530,7 +620,7 @@ popularity_score = (v/(v+m)) * R + (m/(v+m)) * C
   </div>
 
   <!-- Cell 4 -->
-  <h3>Cell 4 — Collaborative Filtering (SVD) <span class="badge bo" style="margin-left:.5rem">Plan</span></h3>
+  <h3>Cell 4 — Collaborative Filtering (SVD) <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card" style="border-left:3px solid var(--orange)">
     <div class="ct">Matrix Factorization dùng TruncatedSVD</div>
     <div class="g2" style="margin-top:.75rem">
@@ -576,7 +666,7 @@ pred = U_reduced[user_idx] @ VT + user_mean
   </div>
 
   <!-- Cell 5 -->
-  <h3>Cell 5 — Constraint Filter <span class="badge bo" style="margin-left:.5rem">Plan</span></h3>
+  <h3>Cell 5 — Constraint Filter <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card">
     <div class="ct">Lọc kết quả theo ràng buộc người dùng</div>
     <div class="cb"><span class="kw">def</span> <span class="fn">apply_constraints</span>(
@@ -601,7 +691,7 @@ pred = U_reduced[user_idx] @ VT + user_mean
   </div>
 
   <!-- Cell 6 -->
-  <h3>Cell 6 — Hybrid Combiner <span class="badge br" style="margin-left:.5rem">Core Plan</span></h3>
+  <h3>Cell 6 — Hybrid Combiner <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card" style="border:1px solid var(--accent)">
     <div class="ct">Kết hợp tất cả models theo context</div>
 
@@ -653,7 +743,7 @@ pred = U_reduced[user_idx] @ VT + user_mean
   </div>
 
   <!-- Cell 7 -->
-  <h3>Cell 7 — Qualitative Check <span class="badge bo" style="margin-left:.5rem">Plan</span></h3>
+  <h3>Cell 7 — Qualitative Check <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card">
     <div class="ct">Kiểm tra định tính: so sánh kết quả 3–5 users</div>
     <div class="tbl-wrap"><table>
@@ -673,7 +763,7 @@ pred = U_reduced[user_idx] @ VT + user_mean
   </div>
 
   <!-- Cell 8 -->
-  <h3>Cell 8 — Evaluation on Validation Set <span class="badge br" style="margin-left:.5rem">Plan</span></h3>
+  <h3>Cell 8 — Evaluation on Validation Set <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card" style="border-left:3px solid var(--accent2)">
     <div class="ct">Đánh giá định lượng trên 139,876 val interactions</div>
 
@@ -724,7 +814,7 @@ pred = U_reduced[user_idx] @ VT + user_mean
   </div>
 
   <!-- Cell 9 -->
-  <h3>Cell 9 — Save Model Artifacts <span class="badge bo" style="margin-left:.5rem">Plan</span></h3>
+  <h3>Cell 9 — Save Model Artifacts <span class="badge bg" style="margin-left:.5rem">Done</span></h3>
   <div class="card">
     <div class="ct">Lưu vào <code>artifacts/models/</code></div>
     <div class="tbl-wrap"><table>
