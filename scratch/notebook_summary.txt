@@ -1,0 +1,743 @@
+
+========================================
+--- Notebook: notebooks/03_data_feature_engineering.ipynb ---
+========================================
+
+
+[Code Cell 0]
+# Notebook 03: Tao dac trung va artifacts cho recommendation model
+
+[Code Cell 1]
+import pandas as pd
+import numpy as np
+import re
+import ast
+import json
+import joblib
+import time
+from pathlib import Path
+from datetime import datetime
+from scipy import sparse
+... (truncated)
+
+[Code Cell 2]
+df_recipes = pd.read_csv("../data/processed/recipes_clean.csv")
+df_interactions = pd.read_csv("../data/processed/interactions_clean.csv")
+
+def parse_list_safe(x):
+    if isinstance(x, list):
+        return x
+    if pd.isna(x):
+        return []
+    if isinstance(x, str):
+        try:
+... (truncated)
+--- Outputs ---
+recipes:      (76608, 24)
+interactions: (693880, 5)
+Sample ingredients_clean: ['winter squash', 'mexican seasoning', 'mixed spice']
+Sample tags_clean:        ['60-minutes-or-less', 'time-to-make', 'course']
+
+
+[Code Cell 3]
+# === Cell C - Schema checks & hard guards ===
+
+print("--- Before guards ---")
+print(f"recipes:      {df_recipes.shape}")
+print(f"interactions: {df_interactions.shape}")
+
+# 1) Ép kiểu dữ liệu core
+df_recipes["id"] = pd.to_numeric(df_recipes["id"], errors="coerce").astype("Int64")
+df_recipes["minutes"] = pd.to_numeric(df_recipes["minutes"], errors="coerce")
+df_recipes["calories"] = pd.to_numeric(df_recipes["calories"], errors="coerce")
+... (truncated)
+--- Outputs ---
+--- Before guards ---
+recipes:      (76608, 24)
+interactions: (693880, 5)
+Orphan interactions removed: 0
+Calorie outliers flagged (kept but flagged): 0
+
+--- After guards ---
+recipes:      (76608, 25)
+interactions: (693880, 5)
+unique users: 30,836
+... (truncated)
+
+[Code Cell 4]
+# === Cell D - Anti-leakage split ===
+# Split interactions theo thời gian: 80% cũ nhất -> train, 20% mới nhất -> validation
+# Chỉ dùng train_interactions để tính user/popularity stats phía sau
+
+interactions_sorted = df_interactions.sort_values("date").reset_index(drop=True)
+split_idx = int(len(interactions_sorted) * 0.8)
+
+train_interactions = interactions_sorted.iloc[:split_idx].copy()
+val_interactions = interactions_sorted.iloc[split_idx:].copy()
+
+... (truncated)
+--- Outputs ---
+train_interactions: 555,104 rows
+val_interactions:   138,776 rows
+train date range:   2000-02-25 00:00:00 -> 2010-08-14 00:00:00
+val   date range:   2010-08-14 00:00:00 -> 2018-12-19 00:00:00
+
+train users: 27,016  |  train items: 72,213
+val   users: 14,353  |  val   items: 43,731
+cold-start users in val: 3,820
+cold-start items in val: 4,395
+
+
+[Code Cell 5]
+# === Cell E - Text Feature Construction ===
+def normalize_text(text):
+    """
+    Normalize general text fields (description)
+    """
+    if pd.isna(text):
+        return ""
+    
+    text = text.lower()
+    
+... (truncated)
+--- Outputs ---
+Text feature construction completed
+
+Example rows:
+
+
+       id                                   ingredients_text  \
+0  137739  winter_squash mexican_seasoning mixed_spice ho...   
+1   75452  sugar unsalted_butter bananas eggs fresh_lemon...   
+2   63986  lean_pork_chops flour salt dry_mustard garlic_...   
+3   43026  egg_roll_wrap whole_green_chilies cheese corns...   
+4   23933  butterscotch_chips chinese_noodles salted_peanuts   
+
+                                           tags_text  \
+0  60 minutes or less time to make course main in...   
+1  weeknight time to make course main ingredient ...   
+... (truncated)
+
+Null counts:
+ingredients_text    0
+tags_text           0
+combined_text       0
+dtype: int64
+
+Average text length:
+844.8653926482874
+
+
+[Code Cell 6]
+print(df_recipes["combined_text"].isnull().sum())
+print(df_recipes["combined_text"].sample(5))
+print(df_recipes["combined_text"].str.split().explode().value_counts().head(10))
+--- Outputs ---
+0
+72745    chicken_breast olive_oil onion clove garlic gr...
+13487    lean_ground_beef barbecue_sauce ketchup hambur...
+1894     pasta peas carrots apple tomatoes gherkins yog...
+1430     cream_of_tartar baking_soda rice_flour cream_o...
+40523    olive_oil onion garlic_cloves dried_basil bulg...
+Name: combined_text, dtype: str
+combined_text
+low            246851
+or             236693
+... (truncated)
+
+[Code Cell 7]
+# === Cell F - TF-IDF Recipe Vectors ===
+#
+# Mục tiêu: biến combined_text của mỗi recipe thành vector số để tính similarity.
+#
+# Pipeline:
+#   combined_text (77k strings)
+#       -> TfidfVectorizer.fit_transform()
+#           -> tfidf_vectorizer : model đã học vocabulary (token -> column index)
+#           -> recipe_tfidf_matrix : sparse matrix (n_recipes x n_features), mỗi hàng = 1 recipe vector
+#       -> recipe_index_map : bảng ánh xạ recipe_id <-> row index trong matrix
+... (truncated)
+--- Outputs ---
+TF-IDF matrix shape: (76608, 20000)
+Vocabulary size:     20000
+Sparsity:            99.4728%
+
+Sample vocab (first 10):  ['05', '06', '07', '08', '09', '10', '10 minutes', '10 years', '100', '11']
+Sample vocab (last 10):   ['zucchini red_bell_pepper', 'zucchini salt', 'zucchini tomatoes', 'zucchini yellow_squash', 'zwt', 'zwt region', 'zwt3', 'zwt5', 'zwt6', 'zwt7']
+
+recipe_index_map:
+
+   recipe_id  matrix_index
+0     137739             0
+1      75452             1
+2      63986             2
+3      43026             3
+4      23933             4
+
+[Code Cell 8]
+# === Cell G - Content Similarity Artifacts ===
+#
+# Mục tiêu: Tính top-K cosine neighbors cho mỗi recipe từ TF-IDF matrix.
+#
+# Tại sao không tính full NxN?
+#   - 77k × 77k = ~6 tỷ giá trị → ~45GB RAM → không khả thi
+#   - Chỉ cần giữ top-K neighbors là đủ cho recommendation
+#
+# Chiến lược batch:
+#   1. Chia 77k recipes thành batch nhỏ (BATCH_SIZE=500)
+... (truncated)
+--- Outputs ---
+Computing top-50 neighbors for 76,608 recipes (batch_size=500)
+Expected output rows: ~3,830,400
+  [  6.5%] 5,000/76,608 recipes done  (16.6s)
+  [ 13.1%] 10,000/76,608 recipes done  (44.2s)
+  [ 19.6%] 15,000/76,608 recipes done  (70.3s)
+  [ 26.1%] 20,000/76,608 recipes done  (96.6s)
+  [ 32.6%] 25,000/76,608 recipes done  (131.7s)
+  [ 39.2%] 30,000/76,608 recipes done  (158.3s)
+  [ 45.7%] 35,000/76,608 recipes done  (183.4s)
+  [ 52.2%] 40,000/76,608 recipes done  (206.4s)
+... (truncated)
+
+[Code Cell 9]
+# Cell H - Numerical & constraint features
+# - Build rule-based fields: calories, minutes, n_ingredients_calc
+# - Build buckets/flags: quick_meal, low_calorie, etc.
+# Thời gian nấu
+df_recipes["is_quick_meal"] = df_recipes["minutes"] <= 30
+df_recipes["is_medium_meal"] = df_recipes["minutes"].between(31, 60)
+df_recipes["is_long_meal"] = df_recipes["minutes"] > 60
+
+# Calories
+df_recipes["is_low_calorie"] = df_recipes["calories"].between(10, 300)
+... (truncated)
+--- Outputs ---
+recipe_features shape: (76608, 13)
+
+Distribution:
+  quick_meal:    34,499 (45.0%)
+  low_calorie:   38,104 (49.7%)
+  simple_recipe: 13,982 (18.3%)
+
+Sample:
+
+   recipe_id  minutes  calories  n_ingredients_calc  is_calorie_outlier  \
+0     137739       55      51.5                   7               False   
+1      75452       70    2669.3                   9               False   
+2      63986      500     105.7                   7               False   
+3      43026       45      94.0                   5               False   
+4      23933       15     232.7                   3               False   
+
+   is_quick_meal  is_medium_meal  is_long_meal  is_low_calorie  \
+0          False            True         False            True   
+1          False           False          True           False   
+... (truncated)
+
+[Code Cell 10]
+# Cell I - User features (from train only)
+# - avg_rating_given, rating_count, activity_level
+# - favorite_tags from high-rated history
+# - default fallback for new users
+# 1) Thống kê cơ bản theo user
+user_stats = train_interactions.groupby("user_id").agg(
+    avg_rating_given=("rating", "mean"),
+    rating_count=("rating", "count"),
+    min_date=("date", "min"),
+    max_date=("date", "max"),
+... (truncated)
+--- Outputs ---
+Global fallback: avg_rating=4.71, top_tags=['preparation', 'time-to-make', 'course']
+
+user_features shape: (27016, 7)
+
+Activity level distribution:
+activity_level
+cold      13561
+warm       8988
+active     4467
+Name: count, dtype: int64
+... (truncated)
+   user_id  avg_rating_given  rating_count   min_date   max_date  \
+0     1533          4.847222            72 2002-02-19 2008-03-01   
+1     1535          4.569811           530 2004-05-22 2010-08-14   
+2     1634          4.323529            34 2001-07-05 2010-02-05   
+3     1676          4.500000            16 2002-07-24 2010-04-23   
+4     1773          4.000000             3 2000-03-13 2001-01-29   
+
+  activity_level                                 favorite_tags  
+0         active           [time-to-make, preparation, course]  
+1         active           [preparation, time-to-make, course]  
+... (truncated)
+
+[Code Cell 11]
+# Cell J - Recipe Popularity Features
+# Mục tiêu:
+# - rating_count
+# - rating_mean
+# - popularity_score (Bayesian smoothing)
+# - is_cold_item flag
+
+
+#  1. Recipe rating statistics 
+recipe_stats = (
+... (truncated)
+--- Outputs ---
+Global mean rating (C): 4.713
+Minimum votes threshold (m): 7.0
+
+Popularity features summary:
+Total recipes: 76,608
+Cold items: 4,395
+
+Score distribution:
+count    76608.000000
+mean         4.707867
+... (truncated)
+       recipe_id  rating_count  rating_mean  popularity_score  is_cold_item
+377        77497          58.0     5.000000          4.969136         False
+6477       34753          54.0     5.000000          4.967112         False
+39607     154351          51.0     5.000000          4.965411         False
+50875      78579         165.0     4.975758          4.965080         False
+69997     186029          49.0     5.000000          4.964175         False
+
+Sample:
+
+   recipe_id  rating_count  rating_mean  popularity_score  is_cold_item
+0     137739           1.0     5.000000          4.749226         False
+1      75452           4.0     4.750000          4.726710         False
+2      63986          16.0     4.875000          4.825818         False
+3      43026          13.0     4.923077          4.849691         False
+4      23933           9.0     4.777778          4.749613         False
+
+[Code Cell 12]
+# Cell K - Feature validation checklist
+# - Validate nulls, schema, key uniqueness
+# - Coverage checks: users/features, recipes/vectors, recipes/top-k neighbors
+# - Print final sanity summary
+
+print("========== FEATURE VALIDATION ==========\n")
+
+
+# 1. Null checks
+print("1) Null checks")
+... (truncated)
+--- Outputs ---
+========== FEATURE VALIDATION ==========
+
+1) Null checks
+
+recipe_features nulls:
+recipe_id             0
+minutes               0
+calories              0
+n_ingredients_calc    0
+is_calorie_outlier    0
+... (truncated)
+
+[Code Cell 13]
+# === Cell L - Save Artifacts + Manifest ===
+
+OUTPUT_DIR = Path("../artifacts/features")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Fix pandas Int64 (nullable) -> int64 (numpy) for serialization
+for df_fix, cols in [
+    (recipe_index_map, ["recipe_id"]),
+    (recipe_features, ["recipe_id"]),
+    (recipe_similarity_topk, ["recipe_id", "neighbor_recipe_id"]),
+... (truncated)
+--- Outputs ---
+Artifacts saved to: D:\GITHUB\Food-RecommendationSystem\artifacts\features
+
+  popularity_features.csv                           3.24 MB
+  popularity_features.parquet                       0.78 MB
+  recipe_features.csv                               5.22 MB
+  recipe_features.parquet                           0.90 MB
+  recipe_index_map.csv                              1.00 MB
+  recipe_index_map.parquet                          0.94 MB
+  recipe_similarity_topk.csv                      124.28 MB
+  recipe_similarity_topk.parquet                   39.77 MB
+... (truncated)
+
+========================================
+--- Notebook: notebooks/04_recommendation_model.ipynb ---
+========================================
+
+
+[Code Cell 0]
+# Notebook 04: Xay dung, danh gia va luu recommendation models
+
+[Code Cell 1]
+# === Cell 1 - Setup & Load Artifacts ===
+
+import pandas as pd
+import numpy as np
+import ast
+import json
+import joblib
+from pathlib import Path
+from scipy import sparse
+from sklearn.decomposition import TruncatedSVD
+... (truncated)
+--- Outputs ---
+Manifest version:        1.0
+Build timestamp:         2026-04-25T20:01:56.461237
+
+recipe_tfidf_matrix:     (76608, 20000)
+recipe_index_map:        77,300 rows
+recipe_similarity_topk:  3,865,000 rows
+recipe_features:         77,300 rows
+popularity_features:     77,300 rows
+user_features:           27,021 rows
+train_interactions:      559,500 rows
+... (truncated)
+
+[Code Cell 2]
+# === Cell 2 - Popularity-Based Recommender ===
+#
+# Xếp hạng recipe theo popularity_score (Bayesian smoothing từ NB03).
+# Đây là recommender đơn giản nhất, dùng làm:
+#   - Baseline so sánh với các model phức tạp hơn
+#   - Fallback cho cold-start users (không có lịch sử)
+
+# Pre-sort popularity một lần, dùng lại cho mọi lần gọi
+popularity_ranked = popularity_features.sort_values("popularity_score", ascending=False).reset_index(drop=True)
+
+... (truncated)
+--- Outputs ---
+Top-10 popular recipes:
+
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+5     6      58516                                   hot pepper jelly   
+6     7     244193  absolutely the best new york cheesecake gluten...   
+7     8      55309  caprese salad tomatoes italian marinated tomatoes   
+8     9      31639                                   7 layer bean dip   
+... (truncated)
+
+[Code Cell 3]
+# === Cell 3 - Content-Based Recommender ===
+neighbors_lookup = recipe_similarity_topk.groupby("recipe_id")
+
+def recommend_content_similar(recipe_id, n=10):
+
+    if recipe_id not in neighbors_lookup.groups:
+        return pd.DataFrame()
+
+    neighbors = neighbors_lookup.get_group(recipe_id)
+
+... (truncated)
+
+[Code Cell 4]
+# === Cell 4 - Collaborative Filtering (SVD) ===
+# - Build user-item sparse matrix from train_interactions (centered by user mean)
+# - Fit TruncatedSVD(n_components=50)
+# - recommend_cf(user_id, n): reconstruct predicted ratings, exclude seen, return top-N
+# - Only works for users present in train set
+
+# Build user-item matrix
+# -------------------------------------------------
+
+user_ids = train_interactions["user_id"].unique()
+... (truncated)
+--- Outputs ---
+User-item matrix shape: (27021, 72860)
+SVD model trained
+
+
+[Code Cell 5]
+# === Cell 5 - Constraint Filter ===
+# - apply_constraints(candidate_ids, max_calories, max_minutes, tags_include)
+# - Filters candidate recipes by rule-based conditions
+# - Wraps around any recommender output before returning to user
+# Load tags cho tag filter (nếu chưa có)
+df_recipes_full = pd.read_csv("../data/processed/recipes_clean.csv", usecols=["id", "tags_clean"])
+df_recipes_full["tags_clean"] = df_recipes_full["tags_clean"].apply(
+    lambda x: ast.literal_eval(x) if isinstance(x, str) else []
+)
+def apply_constraints(candidate_df, max_calories=None, max_minutes=None,
+... (truncated)
+
+[Code Cell 6]
+# === Cell 6 - Hybrid Combiner ===
+# Ket hop content + CF theo tier user, co fallback sang popularity
+
+def min_max_normalize(series):
+    mn, mx = series.min(), series.max()
+    if mx == mn:
+        return pd.Series(0.5, index=series.index)
+    return (series - mn) / (mx - mn)
+def recommend_hybrid(user_id, n=10, constraints=None):
+    seen_ids = set(
+... (truncated)
+
+[Code Cell 7]
+# === Cell 7 - Qualitative Check ===
+# Kiem tra dinh tinh recommendation tren 3 nhom user
+sample_active = user_features[user_features["activity_level"] == "active"]["user_id"].iloc[0]
+sample_warm = user_features[user_features["activity_level"] == "warm"]["user_id"].iloc[0]
+cold_users = set(val_interactions["user_id"]) - train_user_ids
+sample_cold = list(cold_users)[0]
+sample_users = [
+    (sample_active, "ACTIVE"),
+    (sample_warm, "WARM"),
+    (sample_cold, "COLD-START"),
+... (truncated)
+--- Outputs ---
+======================================================================
+USER 1533 (ACTIVE)
+======================================================================
+Total interactions: 73
+Liked (rating ≥ 4): 71
+Sample liked: ['zucchini and rice casserole', 'orange yogurt cream', 'parmesan fish in the oven', 'fennel mashed potatoes', 'c hudson s ham potato casserole']
+
+── Popularity ──
+
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+
+   popularity_score  
+0          4.969171  
+1          4.967149  
+... (truncated)
+
+── Content-Based ──
+
+   rank  recipe_id                                 name  content_score
+0     1    46277.0                    no salt seasoning       0.702102
+1     2    68017.0                    italian seasoning       0.597112
+2     3     4029.0  herb blend for boursin cream cheese       0.583898
+3     4    48555.0                          memphis rub       0.569698
+4     5    83902.0             montreal steak seasoning       0.551078
+
+── Collaborative Filtering ──
+
+   rank  recipe_id                                    name  predicted_rating
+0     1      54257  yes virginia there is a great meatloaf          4.867880
+1     2       9836              slow cooker cheesy chicken          4.866137
+2     3      81853      easy crock pot macaroni and cheese          4.863790
+3     4      75302   mrs geraldine s ground beef casserole          4.857115
+4     5      28148         oven fried chicken chimichangas          4.855984
+
+── Hybrid ──
+
+   rank  recipe_id                                    name  hybrid_score  \
+0     1    54257.0  yes virginia there is a great meatloaf      0.537275   
+1     2    46277.0                       no salt seasoning      0.537263   
+2     3     9836.0              slow cooker cheesy chicken      0.476741   
+3     4    81853.0      easy crock pot macaroni and cheese      0.395241   
+4     5    68017.0                       italian seasoning      0.309256   
+
+   content_norm   cf_norm  source  
+0      0.074550  1.000000  hybrid  
+1      1.000000  0.074526  hybrid  
+... (truncated)
+
+
+======================================================================
+USER 1676 (WARM)
+======================================================================
+Total interactions: 16
+Liked (rating ≥ 4): 14
+Sample liked: ['marinated chicken wings', 'guacamole', 'cornflake crumb parmesan chicken', 'aegean chicken', 'moist oven fried chicken']
+
+── Popularity ──
+... (truncated)
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+
+   popularity_score  
+0          4.969171  
+1          4.967149  
+... (truncated)
+
+── Content-Based ──
+
+   rank  recipe_id                                             name  \
+0     1    32721.0                                  whack a mole eh   
+1     2    20684.0  the world s smoothest guacamole with sour cream   
+2     3    28205.0                               chile garden salsa   
+3     4    19666.0                                 sticky soy wings   
+4     5    27995.0       4 ingredient sweet and spicy chicken wings   
+
+   content_score  
+0       0.558246  
+1       0.481705  
+... (truncated)
+
+── Collaborative Filtering ──
+
+   rank  recipe_id                             name  predicted_rating
+0     1      30081                ground beef gyros          4.510539
+1     2       9836       slow cooker cheesy chicken          4.509692
+2     3      50144         crock pot potato chowder          4.506215
+3     4     211553  wonderful peanut butter cookies          4.505705
+4     5     116387                      fruit flips          4.505437
+
+── Hybrid ──
+
+   rank  recipe_id                                             name  \
+0     1    32721.0                                  whack a mole eh   
+1     2    30081.0                                ground beef gyros   
+2     3     9836.0                       slow cooker cheesy chicken   
+3     4    20684.0  the world s smoothest guacamole with sour cream   
+4     5    28205.0                               chile garden salsa   
+
+   hybrid_score  content_norm   cf_norm  source  
+0      0.592022      1.000000  0.184044  hybrid  
+1      0.567745      0.135490  1.000000  hybrid  
+... (truncated)
+
+
+======================================================================
+USER 1925124 (COLD-START)
+======================================================================
+Total interactions: 0
+Liked (rating ≥ 4): 0
+
+── Popularity ──
+
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+
+   popularity_score  
+0          4.969171  
+1          4.967149  
+... (truncated)
+
+── Content-Based ──
+
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+
+   popularity_score  
+0          4.969171  
+1          4.967149  
+... (truncated)
+
+── Collaborative Filtering ──
+
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+
+   popularity_score  
+0          4.969171  
+1          4.967149  
+... (truncated)
+
+── Hybrid ──
+
+   rank  recipe_id                                               name  \
+0     1      77497              2 handed kitchen sink tomato sandwich   
+1     2      34753                              basic sourdough bread   
+2     3     154351                   kittencal s balsamic vinaigrette   
+3     4      78579  pan release professional pan coating better th...   
+4     5     186029                the best creole cajun seasoning mix   
+
+   popularity_score      source  
+0          4.969171  popularity  
+1          4.967149  popularity  
+... (truncated)
+
+
+
+
+[Code Cell 8]
+# === Cell 8 - Đánh giá trên tập validation ===
+# Đánh giá bằng các chỉ số P@K, R@K, NDCG@K và Coverage
+import time
+from collections import defaultdict
+K = 10
+# --- Ground truth: chỉ đánh giá trên các positive chưa xuất hiện trong train ---
+val_positive = val_interactions[val_interactions["rating"] >= 4].copy()
+train_seen_by_user = train_interactions.groupby("user_id")["recipe_id"].apply(set).to_dict()
+
+def build_unseen_relevant(group):
+... (truncated)
+--- Outputs ---
+Val users with unseen relevant items: 14,129
+Avg unseen relevant items per user: 9.4
+
+============================================================
+Evaluating on 14,129 val users, K=10
+============================================================
+
+▶ Popularity
+  [Popularity] 2,000/14,129 users (124s), errors=0
+  [Popularity] 4,000/14,129 users (235s), errors=0
+... (truncated)
+        model       P@K       R@K    NDCG@K  Coverage  users_evaluated  \
+0  Popularity  0.000878  0.001366  0.001254  0.000196            14129   
+1     Content  0.000602  0.000808  0.000842  0.329874            14129   
+2    CF (SVD)  0.002350  0.004176  0.004037  0.017152            14129   
+3      Hybrid  0.001600  0.002880  0.002694  0.306926            14129   
+
+   time_seconds  
+0         729.8  
+1        2329.1  
+2         840.4  
+... (truncated)
+
+============================================================
+COLD-START USER REPORT
+============================================================
+
+Cold-start users in val with relevant items: 3,787
+
+▶ Popularity (cold-start only)
+  [Popularity] 2,000/3,787 users (58s), errors=0
+  [Popularity] Done in 109.3s - P@10=0.0007, errors=0
+... (truncated)
+        model       P@K       R@K    NDCG@K  Coverage
+0  Popularity  0.000713  0.001096  0.000879  0.000131
+1     Content  0.000713  0.001096  0.000879  0.000131
+2      Hybrid  0.000713  0.001096  0.000879  0.000131
+
+[Code Cell 9]
+# === Cell 9 - Save Model Artifacts ===
+import json
+import joblib
+from pathlib import Path
+from datetime import datetime
+MODELS_DIR = Path("../artifacts/models")
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+# ─── 1. SVD Model ───
+svd_artifact = {
+    "svd_model": svd_model,
+... (truncated)
+--- Outputs ---
+Saved: svd_model.joblib (66.3 MB)
+Saved: user_index_map.csv (27,021 users)
+Saved: hybrid_config.json
+Saved: evaluation_results.json
+
+All artifacts saved to: D:\GITHUB\Food-RecommendationSystem\artifacts\models
+  evaluation_results.json                 0.00 MB
+  hybrid_config.json                      0.00 MB
+  svd_model.joblib                       66.25 MB
+  user_index_map.csv                      0.35 MB
+... (truncated)
