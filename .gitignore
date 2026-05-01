@@ -1,4 +1,6 @@
 venv/
 data/raw/
 data/processed/
+artifacts/
 __pycache__/
+docs/
