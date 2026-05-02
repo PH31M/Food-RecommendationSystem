@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hybrid Recommender Demo</title>
+  <style>
+    :root {
+      --bg: #0a1020;
+      --card: #121c36;
+      --muted: #9fb0da;
+      --text: #e8efff;
+      --line: #2c3c6d;
+      --accent: #60a5fa;
+      --ok: #34d399;
+      --warn: #f59e0b;
+      --danger: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 10% 0%, #132147, #0a1020 45%);
+      color: var(--text);
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+    h1, h2, h3 { margin: 0 0 8px; }
+    h1 { font-size: 30px; }
+    p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .card {
+      background: rgba(18, 28, 54, 0.95);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .full { grid-column: span 12; }
+    .half { grid-column: span 6; }
+    .third { grid-column: span 4; }
+    @media (max-width: 960px) {
+      .half, .third { grid-column: span 12; }
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    label { color: var(--muted); font-size: 14px; }
+    select, input[type="range"], button {
+      border: 1px solid var(--line);
+      background: #1a2750;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    button { cursor: pointer; }
+    .pill {
+      display: inline-block;
+      margin-top: 8px;
+      margin-right: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pill.ok { color: var(--ok); border-color: #2f6b58; }
+    .pill.warn { color: var(--warn); border-color: #755627; }
+    .pill.danger { color: var(--danger); border-color: #6f3131; }
+    .formula {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(96, 165, 250, 0.08);
+      font-family: Consolas, Menlo, monospace;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: center;
+    }
+    th { color: #c9d7ff; font-weight: 600; }
+    .rank-good { color: var(--ok); font-weight: 600; }
+    .rank-bad { color: var(--danger); }
+    .steps {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .step {
+      border-left: 3px solid var(--accent);
+      background: rgba(96, 165, 250, 0.08);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #dbe6ff;
+      font-size: 14px;
+    }
+    .foot { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Demo trực quan Hybrid Recommender</h1>
+    <p>
+      Mô phỏng đúng ý tưởng trong hệ của bạn: lấy điểm từ <b>Content</b> và <b>CF</b>,
+      chuẩn hóa về cùng thang, rồi trộn theo <b>alpha</b>. Có luôn fallback khi cold user / thiếu dữ liệu.
+    </p>
+
+    <div class="grid">
+      <section class="card full">
+        <h3>Điều khiển tình huống</h3>
+        <div class="row">
+          <label>User profile:
+            <select id="profileSelect">
+              <option value="cold">Cold (không có trong train)</option>
+              <option value="warm" selected>Warm (rating_count &lt; 5)</option>
+              <option value="active">Active (rating_count &gt;= 5)</option>
+            </select>
+          </label>
+
+          <label>Alpha:
+            <input type="range" id="alphaSlider" min="0" max="1" step="0.05" value="0.70" />
+            <span id="alphaValue">0.70</span>
+          </label>
+
+          <button id="suggestAlphaBtn">Gợi ý alpha theo profile</button>
+          <button id="regenBtn">Đổi bộ điểm mẫu</button>
+        </div>
+        <span class="pill ok">Warm: thường thiên content (alpha ~ 0.7)</span>
+        <span class="pill warn">Active: thường cân bằng (alpha ~ 0.5)</span>
+        <span class="pill danger">Cold: fallback popularity</span>
+      </section>
+
+      <section class="card half">
+        <h3>1) Điểm nguồn trước khi trộn</h3>
+        <p>Điểm mô phỏng của cùng tập item từ hai model: <code>content_score</code> và <code>cf_score</code>.</p>
+        <div id="rawScoresTable"></div>
+      </section>
+
+      <section class="card half">
+        <h3>2) Chuẩn hóa và trộn điểm</h3>
+        <div class="formula">hybrid_score = alpha * content_norm + (1 - alpha) * cf_norm</div>
+        <div id="steps" class="steps"></div>
+      </section>
+
+      <section class="card third">
+        <h3>3) Normalize (Min-Max)</h3>
+        <p>Đưa 2 nguồn điểm về cùng [0, 1] để trộn công bằng.</p>
+        <div id="normTable"></div>
+      </section>
+
+      <section class="card third">
+        <h3>4) Fallback logic</h3>
+        <div id="fallbackBox" class="steps"></div>
+      </section>
+
+      <section class="card third">
+        <h3>5) Top-N kết quả</h3>
+        <div id="topNBox"></div>
+      </section>
+
+      <section class="card full">
+        <h3>Bảng xếp hạng cuối</h3>
+        <p>Bỏ item đã xem rồi sort theo điểm cuối (hoặc popularity fallback khi cold).</p>
+        <div id="rankTable"></div>
+        <p class="foot">
+          Mẹo thuyết trình: "Hybrid giúp hệ ổn định hơn: có personalization từ CF + độ an toàn của content/popularity khi dữ liệu chưa đủ."
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const items = ["I101", "I102", "I103", "I104", "I105", "I106", "I107", "I108"];
+    const itemNames = {
+      I101: "Spicy Chicken Bowl",
+      I102: "Low-carb Salad",
+      I103: "Seafood Pasta",
+      I104: "Quick Omelette",
+      I105: "Beef Noodle Soup",
+      I106: "Mango Smoothie",
+      I107: "Veggie Stir-fry",
+      I108: "Chocolate Cake"
+    };
+
+    // Mô phỏng item đã xem trên train cho user warm/active
+    const seenByProfile = {
+      cold: new Set(),
+      warm: new Set(["I104", "I106"]),
+      active: new Set(["I101", "I103", "I104", "I106"])
+    };
+
+    // Popularity fallback mẫu cho cold user
+    const popularity = {
+      I101: 4.7, I102: 4.2, I103: 4.4, I104: 4.1,
+      I105: 4.6, I106: 4.3, I107: 4.5, I108: 4.8
+    };
+
+    let seed = 2026;
+    const profileSelect = document.getElementById("profileSelect");
+    const alphaSlider = document.getElementById("alphaSlider");
+    const alphaValue = document.getElementById("alphaValue");
+    const suggestAlphaBtn = document.getElementById("suggestAlphaBtn");
+    const regenBtn = document.getElementById("regenBtn");
+
+    function rngFactory(s) {
+      return function() {
+        s ^= s << 13;
+        s ^= s >> 17;
+        s ^= s << 5;
+        return ((s >>> 0) / 4294967296);
+      };
+    }
+
+    function round2(x) {
+      return (Math.round(x * 100) / 100).toFixed(2);
+    }
+
+    function minMax(values) {
+      const mn = Math.min(...values);
+      const mx = Math.max(...values);
+      if (Math.abs(mx - mn) < 1e-9) return values.map(() => 0.5);
+      return values.map(v => (v - mn) / (mx - mn));
+    }
+
+    function median(arr) {
+      const s = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+    }
+
+    function generateScores(profile) {
+      const r = rngFactory(seed);
+      const content = {};
+      const cf = {};
+
+      for (const id of items) {
+        // base score ngẫu nhiên có xu hướng khác nhẹ giữa 2 model
+        content[id] = 2.8 + r() * 2.0; // 2.8 -> 4.8
+        cf[id] = 2.5 + r() * 2.3;      // 2.5 -> 4.8
+      }
+
+      // Tạo tình huống realistic theo profile:
+      if (profile === "cold") {
+        // cold user: CF không có (không trong user_to_index)
+        for (const id of items) cf[id] = null;
+      } else if (profile === "warm") {
+        // warm: CF còn thiếu một vài item
+        cf["I108"] = null;
+        cf["I102"] = null;
+      } else {
+        // active: content có thể thiếu ít item, CF khá đầy đủ
+        content["I105"] = null;
+      }
+
+      return { content, cf };
+    }
+
+    function buildRawTable(content, cf) {
+      let html = "<table><thead><tr><th>Item</th><th>Name</th><th>content_score</th><th>cf_score</th></tr></thead><tbody>";
+      for (const id of items) {
+        html += `<tr>
+          <td>${id}</td>
+          <td>${itemNames[id]}</td>
+          <td>${content[id] === null ? "-" : round2(content[id])}</td>
+          <td>${cf[id] === null ? "-" : round2(cf[id])}</td>
+        </tr>`;
+      }
+      html += "</tbody></table>";
+      return html;
+    }
+
+    function render() {
+      const profile = profileSelect.value;
+      let alpha = Number(alphaSlider.value);
+      alphaValue.textContent = alpha.toFixed(2);
+
+      const { content, cf } = generateScores(profile);
+      document.getElementById("rawScoresTable").innerHTML = buildRawTable(content, cf);
+
+      const fallbackBox = document.getElementById("fallbackBox");
+      const steps = document.getElementById("steps");
+      const seen = seenByProfile[profile];
+
+      // Cold: fallback popularity
+      if (profile === "cold") {
+        fallbackBox.innerHTML = `
+          <div class="step">User không có trong train -> CF không suy luận được.</div>
+          <div class="step">Hybrid chuyển sang strategy fallback: popularity.</div>
+          <div class="step">Sau đó vẫn có thể áp filter (calories/minutes/seen).</div>
+        `;
+        steps.innerHTML = `
+          <div class="step">Bỏ bước merge + normalize vì không có đủ 2 nguồn điểm.</div>
+          <div class="step">Dùng trực tiếp popularity_score để rank.</div>
+        `;
+
+        let arr = items.map(id => ({
+          id,
+          name: itemNames[id],
+          score: popularity[id],
+          source: "popularity",
+          seen: seen.has(id)
+        }));
+        arr = arr.filter(x => !x.seen).sort((a, b) => b.score - a.score);
+
+        document.getElementById("normTable").innerHTML =
+          "<div class='step'>Cold user: không tính content_norm/cf_norm.</div>";
+
+        document.getElementById("topNBox").innerHTML = `
+          <div class="step">Top-3 fallback:</div>
+          ${arr.slice(0, 3).map((r, i) => `<div class="step">#${i + 1} ${r.id} (${round2(r.score)})</div>`).join("")}
+        `;
+
+        let html = "<table><thead><tr><th>Rank</th><th>Item</th><th>Name</th><th>Final Score</th><th>Source</th></tr></thead><tbody>";
+        arr.forEach((r, i) => {
+          html += `<tr><td>${i + 1}</td><td>${r.id}</td><td>${r.name}</td><td>${round2(r.score)}</td><td>${r.source}</td></tr>`;
+        });
+        html += "</tbody></table>";
+        document.getElementById("rankTable").innerHTML = html;
+        return;
+      }
+
+      // Warm / Active: merge content + cf, fill missing by median
+      const contentVals = Object.values(content).filter(v => v !== null);
+      const cfVals = Object.values(cf).filter(v => v !== null);
+      const cMed = median(contentVals);
+      const fMed = median(cfVals);
+
+      const merged = items.map(id => ({
+        id,
+        name: itemNames[id],
+        c: content[id] === null ? cMed : content[id],
+        f: cf[id] === null ? fMed : cf[id],
+        cMissing: content[id] === null,
+        fMissing: cf[id] === null,
+        seen: seen.has(id)
+      }));
+
+      const cNorm = minMax(merged.map(x => x.c));
+      const fNorm = minMax(merged.map(x => x.f));
+      merged.forEach((m, idx) => {
+        m.cn = cNorm[idx];
+        m.fn = fNorm[idx];
+        m.hybrid = alpha * m.cn + (1 - alpha) * m.fn;
+      });
+
+      // fallback note
+      fallbackBox.innerHTML = `
+        <div class="step">User có trong train -> tính được cả content/CF.</div>
+        <div class="step">Nếu thiếu điểm một bên, fill bằng median trước khi normalize.</div>
+        <div class="step">Cuối cùng trộn theo alpha và lọc item đã xem.</div>
+      `;
+
+      steps.innerHTML = `
+        <div class="step">Profile: <b>${profile}</b> | alpha hiện tại: <b>${alpha.toFixed(2)}</b></div>
+        <div class="step">content_median = ${round2(cMed)} | cf_median = ${round2(fMed)}</div>
+        <div class="step">hybrid = alpha*content_norm + (1-alpha)*cf_norm</div>
+      `;
+
+      let normHtml = "<table><thead><tr><th>Item</th><th>content_norm</th><th>cf_norm</th><th>hybrid_score</th></tr></thead><tbody>";
+      merged.forEach(m => {
+        normHtml += `<tr>
+          <td>${m.id}</td>
+          <td>${round2(m.cn)}</td>
+          <td>${round2(m.fn)}</td>
+          <td>${round2(m.hybrid)}</td>
+        </tr>`;
+      });
+      normHtml += "</tbody></table>";
+      document.getElementById("normTable").innerHTML = normHtml;
+
+      const ranked = merged
+        .filter(x => !x.seen)
+        .sort((a, b) => b.hybrid - a.hybrid);
+
+      document.getElementById("topNBox").innerHTML = `
+        <div class="step">Top-3 Hybrid:</div>
+        ${ranked.slice(0, 3).map((r, i) => `<div class="step">#${i + 1} ${r.id} (${round2(r.hybrid)})</div>`).join("")}
+      `;
+
+      let html = "<table><thead><tr><th>Rank</th><th>Item</th><th>Name</th><th>C_norm</th><th>CF_norm</th><th>Hybrid</th><th>Trạng thái</th></tr></thead><tbody>";
+      ranked.forEach((r, i) => {
+        html += `<tr>
+          <td>${i + 1}</td>
+          <td>${r.id}</td>
+          <td>${r.name}</td>
+          <td>${round2(r.cn)}</td>
+          <td>${round2(r.fn)}</td>
+          <td><span class="rank-good">${round2(r.hybrid)}</span></td>
+          <td>${r.seen ? "<span class='rank-bad'>Đã xem</span>" : "Ứng viên"}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      document.getElementById("rankTable").innerHTML = html;
+    }
+
+    suggestAlphaBtn.addEventListener("click", () => {
+      const profile = profileSelect.value;
+      if (profile === "warm") alphaSlider.value = "0.70";
+      if (profile === "active") alphaSlider.value = "0.50";
+      if (profile === "cold") alphaSlider.value = "0.00";
+      render();
+    });
+
+    regenBtn.addEventListener("click", () => {
+      seed = Math.floor(Math.random() * 1e9);
+      render();
+    });
+
+    alphaSlider.addEventListener("input", render);
+    profileSelect.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>
