@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evaluation Dashboard - Recommender</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #111a33;
+      --line: #2d3c72;
+      --text: #e8eeff;
+      --muted: #9fb0dc;
+      --accent: #60a5fa;
+      --ok: #34d399;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: radial-gradient(circle at 10% 0%, #1a2d62 0%, #0b1020 45%);
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 22px; }
+    h1, h2, h3 { margin: 0 0 8px; }
+    h1 { font-size: 30px; }
+    p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .full { grid-column: span 12; }
+    .half { grid-column: span 6; }
+    .third { grid-column: span 4; }
+    @media (max-width: 960px) {
+      .half, .third { grid-column: span 12; }
+    }
+    .pill {
+      display: inline-block;
+      margin-top: 8px;
+      margin-right: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pill.ok { color: var(--ok); border-color: #2b6a57; }
+    .pill.warn { color: var(--warn); border-color: #6a4f22; }
+    .formula {
+      font-family: Consolas, Menlo, monospace;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(96, 165, 250, 0.08);
+      padding: 10px;
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: center;
+    }
+    th { color: #c8d7ff; font-weight: 600; }
+    .left { text-align: left; }
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .kpi .item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(96, 165, 250, 0.06);
+    }
+    .kpi .label { color: var(--muted); font-size: 12px; }
+    .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .bars { margin-top: 8px; display: grid; gap: 8px; }
+    .bar-row { display: grid; grid-template-columns: 120px 1fr 72px; gap: 8px; align-items: center; }
+    .track { height: 10px; border-radius: 999px; background: #1c2a54; border: 1px solid var(--line); overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, #60a5fa, #34d399); }
+    .steps { display: grid; gap: 8px; margin-top: 8px; }
+    .step {
+      border-left: 3px solid var(--accent);
+      background: rgba(96, 165, 250, 0.08);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #dce7ff;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dashboard đánh giá mô hình gợi ý (K = 10)</h1>
+    <p>
+      Trang này lấy đúng output từ cell evaluate trong notebook: so sánh <b>Popularity</b>,
+      <b>Content</b>, <b>CF (SVD)</b>, <b>Hybrid</b> trên tập <code>val_relevant</code> (relevant & unseen).
+    </p>
+
+    <div class="grid">
+      <section class="card full">
+        <h3>Flow xử lý của cell evaluate</h3>
+        <div class="steps">
+          <div class="step">B1: Tạo <code>val_positive</code> với rating >= 4 trên tập validation.</div>
+          <div class="step">B2: Với mỗi user, bỏ các item đã thấy trong train -> tạo <code>val_relevant</code>.</div>
+          <div class="step">B3: Với mỗi model, lấy top-K recommendation, tính P@K / R@K / NDCG@K, gom Coverage và thời gian.</div>
+          <div class="step">B4: Đánh giá thêm riêng nhóm cold-start user (<code>user not in train</code>).</div>
+        </div>
+        <span class="pill ok">users có relevant unseen: 14129</span>
+        <span class="pill warn">cold-start users trong val: 3787</span>
+      </section>
+
+      <section class="card half">
+        <h3>Metric định nghĩa</h3>
+        <div class="formula">Precision@K = |TopK ∩ Relevant| / K</div>
+        <div class="formula">Recall@K = |TopK ∩ Relevant| / |Relevant|</div>
+        <div class="formula">NDCG@K = DCG / IDCG (có trọng số vị trí)</div>
+        <div class="formula">Coverage = số item được recommend / tổng số item catalog</div>
+      </section>
+
+      <section class="card half">
+        <h3>Tóm tắt nhanh (overall)</h3>
+        <div class="kpi" id="kpiBox"></div>
+        <div class="bars" id="barBox"></div>
+      </section>
+
+      <section class="card full">
+        <h3>Kết quả Overall (val_user_ids)</h3>
+        <div id="overallTable"></div>
+      </section>
+
+      <section class="card half">
+        <h3>Kết quả Cold-start users</h3>
+        <div id="coldTable"></div>
+      </section>
+
+      <section class="card half">
+        <h3>Phân tích tự động (từ kết quả cell)</h3>
+        <div id="analysisBox" class="steps"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const overall = [
+      { model: "Popularity", p: 0.000878, r: 0.001366, ndcg: 0.001254, cov: 0.000196, users: 14129, time: 465.0 },
+      { model: "Content", p: 0.000602, r: 0.000808, ndcg: 0.000842, cov: 0.329874, users: 14129, time: 1227.3 },
+      { model: "CF (SVD)", p: 0.002350, r: 0.004176, ndcg: 0.004037, cov: 0.017152, users: 14129, time: 715.8 },
+      { model: "Hybrid", p: 0.001600, r: 0.002880, ndcg: 0.002694, cov: 0.306926, users: 14129, time: 2938.8 },
+    ];
+
+    const cold = [
+      { model: "Popularity", p: 0.000713, r: 0.001096, ndcg: 0.000879, cov: 0.000131 },
+      { model: "Content", p: 0.000713, r: 0.001096, ndcg: 0.000879, cov: 0.000131 },
+      { model: "Hybrid", p: 0.000713, r: 0.001096, ndcg: 0.000879, cov: 0.000131 },
+    ];
+
+    function f6(x) { return Number(x).toFixed(6); }
+    function f1(x) { return Number(x).toFixed(1); }
+
+    function buildTable(rows, includeTime) {
+      let html = "<table><thead><tr>" +
+        "<th class='left'>Model</th><th>P@10</th><th>R@10</th><th>NDCG@10</th><th>Coverage</th>";
+      if (includeTime) html += "<th>Users</th><th>Time (s)</th>";
+      html += "</tr></thead><tbody>";
+      for (const r of rows) {
+        html += "<tr>" +
+          `<td class='left'>${r.model}</td>` +
+          `<td>${f6(r.p)}</td>` +
+          `<td>${f6(r.r)}</td>` +
+          `<td>${f6(r.ndcg)}</td>` +
+          `<td>${f6(r.cov)}</td>`;
+        if (includeTime) html += `<td>${r.users}</td><td>${f1(r.time)}</td>`;
+        html += "</tr>";
+      }
+      html += "</tbody></table>";
+      return html;
+    }
+
+    function argMax(rows, key) {
+      return [...rows].sort((a, b) => b[key] - a[key])[0];
+    }
+    function argMin(rows, key) {
+      return [...rows].sort((a, b) => a[key] - b[key])[0];
+    }
+
+    function renderKpi() {
+      const bestP = argMax(overall, "p");
+      const bestR = argMax(overall, "r");
+      const bestN = argMax(overall, "ndcg");
+      const bestC = argMax(overall, "cov");
+      const fastest = argMin(overall, "time");
+
+      document.getElementById("kpiBox").innerHTML = `
+        <div class="item"><div class="label">Best P@10</div><div class="value">${bestP.model}</div></div>
+        <div class="item"><div class="label">Best R@10</div><div class="value">${bestR.model}</div></div>
+        <div class="item"><div class="label">Best NDCG@10</div><div class="value">${bestN.model}</div></div>
+        <div class="item"><div class="label">Best Coverage</div><div class="value">${bestC.model}</div></div>
+      `;
+
+      const maxP = Math.max(...overall.map(x => x.p));
+      const bars = overall.map(x => {
+        const width = maxP > 0 ? (x.p / maxP) * 100 : 0;
+        return `
+          <div class="bar-row">
+            <div>${x.model}</div>
+            <div class="track"><div class="fill" style="width:${width}%"></div></div>
+            <div>${x.p.toFixed(4)}</div>
+          </div>
+        `;
+      }).join("");
+      document.getElementById("barBox").innerHTML =
+        `<p class="muted">So sánh tương đối Precision@10 (chuẩn hóa theo model tốt nhất).</p>${bars}
+         <p class="muted" style="margin-top:8px">Nhanh nhất: <b>${fastest.model}</b> (${f1(fastest.time)}s)</p>`;
+    }
+
+    function renderAnalysis() {
+      const bestP = argMax(overall, "p");
+      const bestN = argMax(overall, "ndcg");
+      const bestC = argMax(overall, "cov");
+      const slowest = [...overall].sort((a, b) => b.time - a.time)[0];
+      const coldSame = cold.every(x =>
+        Math.abs(x.p - cold[0].p) < 1e-12 &&
+        Math.abs(x.r - cold[0].r) < 1e-12 &&
+        Math.abs(x.ndcg - cold[0].ndcg) < 1e-12
+      );
+
+      const notes = [
+        `Overall, model tốt nhất theo P@10/NDCG@10 là <b>${bestP.model}</b> (P@10=${f6(bestP.p)}, NDCG@10=${f6(bestN.ndcg)}).`,
+        `Coverage cao nhất là <b>${bestC.model}</b> (${f6(bestC.cov)}), cho thấy độ đa dạng item tốt hơn.`,
+        `Thời gian chạy cao nhất là <b>${slowest.model}</b> (${f1(slowest.time)}s), trade-off giữa chất lượng và chi phí tính toán.`,
+        coldSame
+          ? "Ở nhóm cold-start, các model cho cùng metric -> hành vi thực tế gần như cùng fallback recommendation."
+          : "Ở nhóm cold-start có chênh lệch metric giữa model, cần soi lại chiến lược fallback."
+      ];
+
+      document.getElementById("analysisBox").innerHTML = notes.map(x => `<div class="step">${x}</div>`).join("");
+    }
+
+    document.getElementById("overallTable").innerHTML = buildTable(overall, true);
+    document.getElementById("coldTable").innerHTML = buildTable(cold, false);
+    renderKpi();
+    renderAnalysis();
+  </script>
+</body>
+</html>

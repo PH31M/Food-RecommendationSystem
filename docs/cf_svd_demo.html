@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minh hoa Collaborative Filtering + TruncatedSVD</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --card-2: #1a2548;
+      --text: #eaf0ff;
+      --muted: #a9b7e6;
+      --accent: #6ea8fe;
+      --ok: #34d399;
+      --warn: #f59e0b;
+      --border: #2e3d73;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(160deg, #0b1020, #0f1731 55%, #111936);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1, h2, h3 { margin: 0 0 10px; }
+    h1 { font-size: 28px; }
+    p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(12, 1fr);
+      margin-top: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+    .controls { grid-column: span 12; }
+    .half { grid-column: span 6; }
+    .third { grid-column: span 4; }
+    .full { grid-column: span 12; }
+    @media (max-width: 980px) {
+      .half, .third { grid-column: span 12; }
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 12px;
+      align-items: center;
+    }
+    label {
+      font-size: 14px;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    select, input[type="range"], button {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+    button:hover { transform: translateY(-1px); border-color: var(--accent); }
+    .pill {
+      display: inline-block;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+    .pill.ok { color: var(--ok); border-color: #2b6c58; background: rgba(52, 211, 153, 0.08); }
+    .pill.warn { color: var(--warn); border-color: #6b5122; background: rgba(245, 158, 11, 0.08); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px 6px;
+      text-align: center;
+    }
+    th { color: #c3d2ff; font-weight: 600; }
+    td.user-head, th.user-head {
+      background: rgba(110, 168, 254, 0.08);
+      color: #d4e3ff;
+      text-align: left;
+      padding-left: 10px;
+      min-width: 90px;
+    }
+    .muted { color: var(--muted); }
+    .formula {
+      font-family: Consolas, Menlo, Monaco, monospace;
+      background: rgba(110, 168, 254, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 8px;
+      overflow-x: auto;
+      color: #dbe7ff;
+    }
+    .steps {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .step {
+      border-left: 3px solid var(--accent);
+      padding: 8px 10px;
+      background: rgba(110, 168, 254, 0.06);
+      border-radius: 8px;
+      color: #d9e5ff;
+      font-size: 14px;
+    }
+    .rank-good { color: var(--ok); font-weight: 600; }
+    .rank-bad { color: #fca5a5; }
+    .foot { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Demo trực quan: Collaborative Filtering + TruncatedSVD</h1>
+    <p>
+      Mục tiêu: minh họa luồng trong code của bạn: <b>ma trận user-item</b> →
+      <b>center theo user mean</b> → <b>factor hóa latent (SVD)</b> →
+      <b>score = user_vec · item_vec + user_mean</b> → top gợi ý.
+    </p>
+
+    <div class="grid">
+      <section class="card controls">
+        <h3>Điều khiển demo</h3>
+        <div class="control-row">
+          <label>Chọn user:
+            <select id="userSelect"></select>
+          </label>
+          <label>n_components (minh họa):
+            <input type="range" id="kSlider" min="2" max="5" step="1" value="3" />
+            <span id="kValue">3</span>
+          </label>
+          <button id="randomBtn">Đổi seed giả lập</button>
+          <span class="pill ok">Reproducible khi giữ cùng seed</span>
+          <span class="pill warn">Demo latent đơn giản để dễ hiểu</span>
+        </div>
+      </section>
+
+      <section class="card half">
+        <h3>1) Ma trận rating gốc (R)</h3>
+        <p class="muted">Ô trống = chưa có tương tác. Đây tương đương dữ liệu từ <code>train_interactions</code>.</p>
+        <div id="rawTable"></div>
+      </section>
+
+      <section class="card half">
+        <h3>2) Ma trận sau khi center theo user mean</h3>
+        <p class="muted">Giống đoạn code <code>centered_vals = rating - user_mean</code>.</p>
+        <div id="centeredTable"></div>
+      </section>
+
+      <section class="card third">
+        <h3>3) Latent vector user</h3>
+        <p class="muted">Vai trò tương tự <code>user_factors[u_idx]</code>.</p>
+        <div id="userVector" class="formula"></div>
+      </section>
+
+      <section class="card third">
+        <h3>4) Latent vector item</h3>
+        <p class="muted">Vai trò tương tự các cột trong <code>item_factors</code>.</p>
+        <div id="itemVectors"></div>
+      </section>
+
+      <section class="card third">
+        <h3>5) Công thức dự đoán</h3>
+        <div class="formula">score(u, i) = user_vec(u) · item_vec(i) + user_mean(u)</div>
+        <div id="scoreExplain" class="steps"></div>
+      </section>
+
+      <section class="card full">
+        <h3>6) Xếp hạng top-N món chưa xem</h3>
+        <p class="muted">Trong code thật: bỏ món đã seen, lấy top theo điểm cao nhất.</p>
+        <div id="rankTable"></div>
+        <p class="foot">
+          Gợi ý thuyết trình: "TruncatedSVD giữ lại một số chiều ẩn quan trọng (n_components),
+          nên mô hình gọn hơn nhưng vẫn nắm được pattern sở thích chính."
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const users = ["U1", "U2", "U3", "U4", "U5"];
+    const items = ["I1", "I2", "I3", "I4", "I5", "I6"];
+
+    // null = chưa rating
+    const ratings = [
+      [5, 4, null, 1, null, 2],  // U1
+      [4, 5, 1, null, 2, null],  // U2
+      [null, 1, 5, 4, 4, null],  // U3
+      [1, null, 4, 5, null, 4],  // U4
+      [2, 2, null, 4, 5, 5],     // U5
+    ];
+
+    let seed = 42;
+    const userSelect = document.getElementById("userSelect");
+    const kSlider = document.getElementById("kSlider");
+    const kValue = document.getElementById("kValue");
+    const randomBtn = document.getElementById("randomBtn");
+
+    function mulberry32(a) {
+      return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function mean(arr) {
+      return arr.reduce((s, x) => s + x, 0) / (arr.length || 1);
+    }
+
+    function to2(x) {
+      return (Math.round(x * 100) / 100).toFixed(2);
+    }
+
+    function computeMeans() {
+      return ratings.map(row => {
+        const vals = row.filter(v => v !== null);
+        return mean(vals);
+      });
+    }
+
+    function centeredMatrix(userMeans) {
+      return ratings.map((row, u) =>
+        row.map(v => (v === null ? null : v - userMeans[u]))
+      );
+    }
+
+    // Demo latent factors: dùng trọng số "học giả lập" có seed để minh họa.
+    function buildLatent(k) {
+      const rng = mulberry32(seed);
+      const userFactors = users.map(() => Array.from({ length: k }, () => (rng() * 2 - 1)));
+      const itemFactors = items.map(() => Array.from({ length: k }, () => (rng() * 2 - 1)));
+      return { userFactors, itemFactors };
+    }
+
+    function dot(a, b) {
+      let s = 0;
+      for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+      return s;
+    }
+
+    function buildTable(matrix, centered = false) {
+      let html = "<table><thead><tr><th class='user-head'>User</th>";
+      for (const it of items) html += `<th>${it}</th>`;
+      html += "</tr></thead><tbody>";
+
+      matrix.forEach((row, idx) => {
+        html += `<tr><td class="user-head">${users[idx]}</td>`;
+        row.forEach(v => {
+          if (v === null) {
+            html += `<td class="muted">-</td>`;
+          } else {
+            html += `<td>${centered ? to2(v) : v}</td>`;
+          }
+        });
+        html += "</tr>";
+      });
+      html += "</tbody></table>";
+      return html;
+    }
+
+    function render() {
+      const selectedUser = userSelect.value || users[0];
+      const uIdx = users.indexOf(selectedUser);
+      const k = Number(kSlider.value);
+      kValue.textContent = String(k);
+
+      const userMeans = computeMeans();
+      const centered = centeredMatrix(userMeans);
+      const { userFactors, itemFactors } = buildLatent(k);
+      const uVec = userFactors[uIdx];
+
+      document.getElementById("rawTable").innerHTML = buildTable(ratings, false);
+      document.getElementById("centeredTable").innerHTML = buildTable(centered, true);
+      document.getElementById("userVector").textContent =
+        `${selectedUser}: [${uVec.map(to2).join(", ")}], user_mean = ${to2(userMeans[uIdx])}`;
+
+      let itemHtml = "<table><thead><tr><th>Item</th><th>Vector</th></tr></thead><tbody>";
+      itemFactors.forEach((vec, i) => {
+        itemHtml += `<tr><td>${items[i]}</td><td>[${vec.map(to2).join(", ")}]</td></tr>`;
+      });
+      itemHtml += "</tbody></table>";
+      document.getElementById("itemVectors").innerHTML = itemHtml;
+
+      const seen = new Set(
+        ratings[uIdx].map((v, i) => (v === null ? null : i)).filter(x => x !== null)
+      );
+      const scoreRows = [];
+
+      items.forEach((itemName, iIdx) => {
+        const base = dot(uVec, itemFactors[iIdx]);
+        const score = base + userMeans[uIdx];
+        scoreRows.push({
+          item: itemName,
+          base,
+          score,
+          seen: seen.has(iIdx),
+        });
+      });
+
+      scoreRows.sort((a, b) => b.score - a.score);
+      const topUnseen = scoreRows.filter(r => !r.seen).slice(0, 3);
+
+      let explain = "";
+      topUnseen.forEach((r, i) => {
+        explain += `<div class="step">Top ${i + 1}: ${selectedUser} → ${r.item} | dot = ${to2(r.base)} | score = ${to2(r.score)}</div>`;
+      });
+      document.getElementById("scoreExplain").innerHTML = explain;
+
+      let rankHtml = "<table><thead><tr><th>Rank</th><th>Item</th><th>Dot</th><th>Pred Score</th><th>Trạng thái</th></tr></thead><tbody>";
+      scoreRows.forEach((r, i) => {
+        const status = r.seen
+          ? "<span class='rank-bad'>Đã xem (loại khi recommend)</span>"
+          : "<span class='rank-good'>Ứng viên</span>";
+        rankHtml += `<tr>
+          <td>${i + 1}</td>
+          <td>${r.item}</td>
+          <td>${to2(r.base)}</td>
+          <td>${to2(r.score)}</td>
+          <td>${status}</td>
+        </tr>`;
+      });
+      rankHtml += "</tbody></table>";
+      document.getElementById("rankTable").innerHTML = rankHtml;
+    }
+
+    users.forEach(u => {
+      const opt = document.createElement("option");
+      opt.value = u;
+      opt.textContent = u;
+      userSelect.appendChild(opt);
+    });
+    userSelect.value = "U1";
+
+    userSelect.addEventListener("change", render);
+    kSlider.addEventListener("input", render);
+    randomBtn.addEventListener("click", () => {
+      seed = Math.floor(Math.random() * 1e9);
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

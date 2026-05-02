@@ -1,0 +1,78 @@
+TONG HOP NOTEBOOKS - FOOD RECOMMENDATION SYSTEM
+
+1) notebooks/02_data_cleaning.ipynb
+
+Muc tieu:
+- Lam sach du lieu raw recipes + interactions truoc khi tao feature/model.
+
+Noi dung chinh:
+- Doc du lieu goc.
+- Xu ly missing values, ep kieu du lieu.
+- Parse cac cot list-like (ingredients, tags, steps).
+- Loai bo duplicate.
+- Chuan hoa cot text va tao cot phu:
+  ingredients_clean, tags_clean, ingredients_text, tags_text, n_ingredients_calc.
+- Loc du lieu theo rule:
+  + rating hop le (1-5)
+  + loc sparse users/items bang iterative sparse filtering
+  + loc recipes theo minutes/calories hop ly
+  + dong bo interactions voi recipes de tranh orphan recipe_id.
+- Chay final validation, chi save khi validation pass.
+
+Thuat toan/phuong phap su dung:
+- Rule-based data cleaning.
+- Iterative sparse filtering (lap den hoi tu).
+
+
+2) notebooks/03_data_feature_engineering.ipynb
+
+Muc tieu:
+- Tao artifact dac trung cho giai doan recommendation va danh gia.
+
+Noi dung chinh:
+- Nhan du lieu clean tu notebook 02.
+- Chia train/validation theo thoi gian (temporal split) de giam leakage.
+- Tao text dac trung cho recipe va vector hoa bang TF-IDF.
+- Tinh item-item similarity bang cosine similarity, luu top-k neighbors.
+- Tao cac bang feature:
+  + recipe_features
+  + user_features
+  + popularity_features (co bayesian smoothing).
+- Luu artifact ra artifacts/features (parquet/csv/npz/joblib).
+
+Thuat toan/phuong phap su dung:
+- TF-IDF vectorization.
+- Cosine similarity.
+- Bayesian smoothing cho popularity score.
+
+
+3) notebooks/04_recommendation_model.ipynb
+
+Muc tieu:
+- Xay dung, ket hop va danh gia cac mo hinh goi y.
+
+Noi dung chinh:
+- Load artifact tu notebook 03.
+- Trien khai 4 nhom recommender:
+  1. Popularity-based baseline
+  2. Content-based
+  3. Collaborative Filtering (SVD)
+  4. Hybrid (ket hop content + CF theo user tier)
+- Ap dung constraint filtering (minutes/calories/tags...).
+- Danh gia tren validation:
+  Precision@K, Recall@K, NDCG@K, Coverage.
+- Bao cao rieng cho cold-start users.
+- Luu model artifacts ra artifacts/models.
+
+Thuat toan/phuong phap su dung:
+- Popularity ranking.
+- Content-based recommendation voi item-item similarity.
+- Collaborative Filtering voi TruncatedSVD (matrix factorization).
+- Hybrid weighted scoring (chuan hoa + tron diem).
+
+
+Pipeline tong the:
+- NB02: Data cleaning
+- NB03: Feature engineering + artifacts
+- NB04: Recommendation + evaluation + model artifacts
+
